@@ -1,4 +1,3 @@
-
 """
 Módulo que contiene la clase `model`, la cual contiene la API
 general para resolver el modelo de dinámica adaptativa, en función
@@ -7,7 +6,6 @@ de los parámetros recibidos y el método de resolución seleccionado.
 La función de esta clase es para orquestrar el pipeline de solución, las
 funciones para resolver y gráficar deben estar en submódulos distintos.
 """
-
 
 from typing import Callable, Literal
 
@@ -34,8 +32,8 @@ class Model:
     """
 
     def __init__(
-        self, 
-        consumer_domain: np.ndarray, 
+        self,
+        consumer_domain: np.ndarray,
         resource_domain: np.ndarray,
         mutation_rate: float,
     ) -> None:
@@ -43,8 +41,8 @@ class Model:
         Parámetros
         ----------
         consumer_domain : np.ndarray
-            Dominio discretizado de rasgos de consumidores (x). 
-            
+            Dominio discretizado de rasgos de consumidores (x).
+
             > Ejemplo: consumer_domain = [[0, 1], [-1, 1]] indica
             que x1 está en [0,1], y que x2 está en [-1,1].
 
@@ -65,7 +63,7 @@ class Model:
         self.consumer_domain = consumer_domain
         self.resource_domain = resource_domain
 
-        assert mutation_rate >= 0.0 
+        assert mutation_rate >= 0.0
         assert isinstance(mutation_rate, float)
 
         self.mutation_rate = mutation_rate
@@ -77,9 +75,7 @@ class Model:
         self.consumer_distribution: np.ndarray
         self.resource_distribution: np.ndarray
 
-    def set_consumer_growth_rate(
-        self, vectorized_function: VectorizedFunction
-    ) -> None:
+    def set_consumer_growth_rate(self, vectorized_function: VectorizedFunction) -> None:
         """
         Define la tasa de crecimiento r(x)
         dependiente del rasgo del consumidor.
@@ -89,9 +85,7 @@ class Model:
         """
         self.consumer_growth_rate = vectorized_function
 
-    def set_consumer_decay(
-        self, vectorized_function: VectorizedFunction
-    ) -> None:
+    def set_consumer_decay(self, vectorized_function: VectorizedFunction) -> None:
         """
         Define la mortalidad m1(x)
         de los consumidores.
@@ -101,9 +95,7 @@ class Model:
         """
         self.consumer_decay = vectorized_function
 
-    def set_resource_supply_rate(
-        self, vectorized_function: VectorizedFunction
-    ) -> None:
+    def set_resource_supply_rate(self, vectorized_function: VectorizedFunction) -> None:
         """
         Define la tasa de suministro externo Rin(y)
         de recursos.
@@ -113,9 +105,7 @@ class Model:
         """
         self.resource_supply_rate = vectorized_function
 
-    def set_resource_decay(
-        self, vectorized_function: VectorizedFunction
-    ) -> None:
+    def set_resource_decay(self, vectorized_function: VectorizedFunction) -> None:
         """
         Define la tasa de decaimiento m2(y)
         de los recursos.
@@ -131,13 +121,13 @@ class Model:
         """
         Define el kernel de interacción K(x, y).
 
-        K(x, y) mide qué tan fuertemente un consumidor con 
+        K(x, y) mide qué tan fuertemente un consumidor con
         rasgo x consume un recurso con rasgo y.
         """
         self.resource_consumer_kernel = vectorized_function
 
     def set_initial_data(
-        self, 
+        self,
         initial_consumer_distribution: VectorizedFunction,
         initial_resource_distribution: VectorizedFunction,
     ) -> None:
@@ -156,34 +146,32 @@ class Model:
 
         self.initial_consumer_distribution = initial_consumer_distribution
         self.initial_resource_distribution = initial_resource_distribution
-        
+
     def solve_by_finite_differences(
-        self, 
+        self,
         T: float,
         n_t: int,
         n_x: int,
         n_y: int,
-        border_type: Literal['neumann', 'periodic'],
+        border_type: Literal["neumann", "periodic"],
     ) -> None:
         """
         Resuelve numéricamente el sistema de EDPs de
         mutación-selección mediante diferencias finitas.
         """
         self.consumer_distribution, self.resource_distribution = (
-            solve_model_by_finite_differences(
-                self, T, n_t, n_x, n_y, border_type
-            )
+            solve_model_by_finite_differences(self, T, n_t, n_x, n_y, border_type)
         )
 
     def solve_by_spectral(
-        self,  *args, **kwargs,
+        self,
+        *args,
+        **kwargs,
     ) -> None:
         """
         Resuelve numéricamente el sistema de EDPs de
         mutación-selección mediante método espectral.
         """
         self.consumer_distribution, self.resource_distribution = (
-            solve_model_by_spectral(
-                self, *args, **kwargs
-            )
+            solve_model_by_spectral(self, *args, **kwargs)
         )

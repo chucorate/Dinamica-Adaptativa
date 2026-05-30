@@ -11,4 +11,4 @@ if TYPE_CHECKING:
 def solve_model_by_spectral(model: Model, *args, **kwargs):
     n = 1
     A = np.zeros(n)
-    return A, A 
+    return A, A

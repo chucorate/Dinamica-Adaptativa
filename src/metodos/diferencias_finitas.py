@@ -9,17 +9,22 @@ if TYPE_CHECKING:
 
 
 def get_sparse_matrix(
-    lamb: float, N_x: int, border_type: Literal["neumann", "periodic"],
+    lamb: float,
+    N_x: int,
+    border_type: Literal["neumann", "periodic"],
 ) -> csc_matrix:
     diag_central = (1 + 2 * lamb) * np.ones(N_x)
     diag_lateral = -lamb * np.ones(N_x - 1)
 
-    A = cast(lil_matrix, diags(
-        [diag_lateral, diag_central, diag_lateral],
-        [-1, 0, 1],  # type: ignore
-        format="lil",
-        dtype=float,
-    ).tolil())
+    A = cast(
+        lil_matrix,
+        diags(
+            [diag_lateral, diag_central, diag_lateral],
+            [-1, 0, 1],  # type: ignore
+            format="lil",
+            dtype=float,
+        ).tolil(),
+    )
 
     if border_type == "neumann":
         A[0, 1] = -2 * lamb  # u_{-1} = u_1
@@ -28,7 +33,7 @@ def get_sparse_matrix(
     elif border_type == "periodic":
         A[0, -1] = -lamb  # vecino izquierdo del primer nodo = último nodo
         A[-1, 0] = -lamb  # vecino derecho del último nodo = primer nodo
-        
+
     else:
         raise ValueError(f"Tipo de borde desconocido: {border_type}")
 
@@ -44,7 +49,10 @@ def compute_consumer_integral(
 
 
 def compute_resource_integral(
-    kernel: np.ndarray, growth_rate: np.ndarray, consumer_distribution: np.ndarray, hx: float
+    kernel: np.ndarray,
+    growth_rate: np.ndarray,
+    consumer_distribution: np.ndarray,
+    hx: float,
 ) -> np.ndarray:
     """J_j = ∫ r(x) K(x, y_j) n(x) dx"""
 
@@ -54,11 +62,11 @@ def compute_resource_integral(
 
 
 def solve_model_by_finite_differences(
-    model: Model, 
-    T: float, 
-    n_t: int, 
-    n_x: int, 
-    n_y: int, 
+    model: Model,
+    T: float,
+    n_t: int,
+    n_x: int,
+    n_y: int,
     border_type: Literal["neumann", "periodic"],
 ) -> tuple[np.ndarray, np.ndarray]:
     # Discretización del espacio de rasgos, para consumer y resource.
@@ -83,7 +91,7 @@ def solve_model_by_finite_differences(
     resource_distribution[0, :] = model.initial_resource_distribution(y)
 
     # Precalculamos parámetros del modelo que no dependen del tiempo
-    lamb = model.mutation_rate * delta_t / (hx ** 2)
+    lamb = model.mutation_rate * delta_t / (hx**2)
     A = get_sparse_matrix(lamb, n_x, border_type)
 
     kernel = model.resource_consumer_kernel(x[:, None], y[None, :])
@@ -99,9 +107,8 @@ def solve_model_by_finite_differences(
         # Obtener consumer_distribution a tiempo k, resolvemos sistema de la forma Au = b
         consumer_integral = compute_consumer_integral(kernel, prev_resource, hy)
 
-        b = prev_consumer * (1.0 + delta_t * (
-                consumer_growth_rate * consumer_integral - consumer_decay
-            )
+        b = prev_consumer * (
+            1.0 + delta_t * (consumer_growth_rate * consumer_integral - consumer_decay)
         )
         consumer_distribution[k, :] = cast(np.ndarray, spsolve(A, b))
 
@@ -110,10 +117,8 @@ def solve_model_by_finite_differences(
             kernel, consumer_growth_rate, prev_consumer, hx
         )
 
-        resource_distribution[k, :] =  prev_resource + delta_t * (
-            resouce_supply_rate - prev_resource * (
-                resource_decay + resource_integral
-            )
+        resource_distribution[k, :] = prev_resource + delta_t * (
+            resouce_supply_rate - prev_resource * (resource_decay + resource_integral)
         )
 
     return consumer_distribution, resource_distribution
