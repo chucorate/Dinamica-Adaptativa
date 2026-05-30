@@ -9,4 +9,4 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animate
 
 if TYPE_CHECKING:
-    from src.model import model
+    from src.model import Model

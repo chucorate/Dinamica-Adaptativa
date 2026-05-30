@@ -9,15 +9,18 @@ funciones para resolver y gráficar deben estar en submódulos distintos.
 """
 
 
-from typing import Callable
+from typing import Callable, Literal
 
 import numpy as np
+
+from src.metodos.diferencias_finitas import solve_model_by_finite_differences
+from src.metodos.espectral import solve_model_by_spectral
 
 # Type para funciones que toman arreglos de numpy y retornan arreglos de numpy
 VectorizedFunction = Callable[[np.ndarray], np.ndarray]
 
 
-class model:
+class Model:
     """
     Modelo de mutación y selección para poblaciones estructuradas por rasgos.
 
@@ -123,7 +126,7 @@ class model:
         self.resource_decay = vectorized_function
 
     def set_resource_consumer_kernel(
-        self, vectorized_function: VectorizedFunction
+        self, vectorized_function: Callable[[np.ndarray, np.ndarray], np.ndarray]
     ) -> None:
         """
         Define el kernel de interacción K(x, y).
@@ -154,22 +157,33 @@ class model:
         self.initial_consumer_distribution = initial_consumer_distribution
         self.initial_resource_distribution = initial_resource_distribution
         
-    def solve(self, method: str) -> None:
+    def solve_by_finite_differences(
+        self, 
+        T: float,
+        n_t: int,
+        n_x: int,
+        n_y: int,
+        border_type: Literal['neumann', 'periodic'],
+    ) -> None:
         """
-        Resuelve numéricamente el sistema de EDPs
-        de mutación-selección.
-
-        Parámetros
-        ----------
-        method : str
-            Método numérico utilizado para aproximar
-            la solución.
-
-            Ejemplos:
-                - diferencias finitas
-                - métodos espectrales
+        Resuelve numéricamente el sistema de EDPs de
+        mutación-selección mediante diferencias finitas.
         """
+        self.consumer_distribution, self.resource_distribution = (
+            solve_model_by_finite_differences(
+                self, T, n_t, n_x, n_y, border_type
+            )
+        )
 
-        # self.consumer_distribution = ...
-        # self.resource_distribution = ...
-    
+    def solve_by_spectral(
+        self,  *args, **kwargs,
+    ) -> None:
+        """
+        Resuelve numéricamente el sistema de EDPs de
+        mutación-selección mediante método espectral.
+        """
+        self.consumer_distribution, self.resource_distribution = (
+            solve_model_by_spectral(
+                self, *args, **kwargs
+            )
+        )
