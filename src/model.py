@@ -38,7 +38,7 @@ class Model:
         mutation_rate: float,
     ) -> None:
         """
-        Parámetros
+        Parameters
         ----------
         consumer_domain : np.ndarray
             Dominio discretizado de rasgos de consumidores (x).
@@ -135,7 +135,7 @@ class Model:
         Define las distribuciones iniciales
         de consumidores y recursos.
 
-        Parámetros
+        Parameters
         ----------
         initial_consumer_distribution : callable
             Distribución inicial de consumidores n(x, 0).
@@ -158,6 +158,40 @@ class Model:
         """
         Resuelve numéricamente el sistema de EDPs de
         mutación-selección mediante diferencias finitas.
+
+        Parameters
+        ----------
+        T : float
+            Tiempo final de simulación. La solución se aproxima para t ∈ [0, T].
+
+        n_t : int
+            Número de puntos de discretización temporal.
+
+        n_x : int
+            Número de puntos de discretización del espacio de rasgos de 
+            los consumidores.
+            
+            Se utiliza para aproximar la distribución n(x, t) sobre el 
+            dominio de consumidores.
+
+        n_y : int
+            Número de puntos de discretización del espacio
+            de rasgos de los recursos.
+
+            Se utiliza para aproximar la distribución
+            R(y, t) sobre el dominio de recursos.
+
+        border_type : ["neumann", "periodic"]
+            Tipo de condición de borde utilizada para el
+            operador de difusión asociado a las mutaciones.
+
+            - "neumann":
+                Flujo nulo en los extremos del dominio (∂n/∂x = 0).
+
+            - "periodic":
+                Identifica ambos extremos del dominio,
+                imponiendo periodicidad en la variable
+                de rasgo.
         """
         self.consumer_distribution, self.resource_distribution = (
             solve_model_by_finite_differences(self, T, n_t, n_x, n_y, border_type)
