@@ -168,10 +168,10 @@ class Model:
             Número de puntos de discretización temporal.
 
         n_x : int
-            Número de puntos de discretización del espacio de rasgos de 
+            Número de puntos de discretización del espacio de rasgos de
             los consumidores.
-            
-            Se utiliza para aproximar la distribución n(x, t) sobre el 
+
+            Se utiliza para aproximar la distribución n(x, t) sobre el
             dominio de consumidores.
 
         n_y : int

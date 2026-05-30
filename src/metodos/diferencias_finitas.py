@@ -19,7 +19,7 @@ def get_sparse_matrix(
     A = cast(
         lil_matrix,
         diags(
-            [diag_lateral, diag_central, diag_lateral],
+            [diag_lateral, diag_central, diag_lateral],  # type: ignore
             [-1, 0, 1],  # type: ignore
             format="lil",
             dtype=float,
