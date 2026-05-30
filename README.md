@@ -1,4 +1,4 @@
-# Indicación del código
+# Cómo ejecutar el código
 
 Si `uv` no está instalado, checkea [las siguientes instrucciones de instalación](https://docs.astral.sh/uv/getting-started/installation/).
 
@@ -7,6 +7,8 @@ Para instalar las dependencias del proyecto, ejecutar en la raíz del repositori
 ```
 uv sync --dev
 ```
+
+Esto va a crear el entorno virtual `dinamica-adaptativa`, el cuál debe utilizarse para revisar tipado estático de los scripts de Python, y para ejecutar los jupyter notebooks.
 
 # Planeación
 
@@ -19,7 +21,7 @@ uv sync --dev
 
 # Consideraciones
 
-- Simular para el caso gaussiano.
-- Simular canibalismo
-- Encontrar CFL
-- Estudiar oscilaciones y sus posibles orígenes
+- [ ] Simular para el caso gaussiano.
+- [ ] Simular canibalismo
+- [ ] Encontrar CFL
+- [ ] Estudiar oscilaciones y sus posibles orígenes
