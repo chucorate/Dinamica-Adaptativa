@@ -19,7 +19,7 @@ uv sync --dev
 
 # Consideraciones
 
-- Simular para el caso gaussiano.
-- Simular canibalismo
-- Encontrar CFL
-- Estudiar oscilaciones y sus posibles orígenes
+- [ ] Simular para el caso gaussiano.
+- [ ] Simular canibalismo
+- [ ] Encontrar CFL
+- [ ] Estudiar oscilaciones y sus posibles orígenes
