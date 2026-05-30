@@ -62,7 +62,7 @@ def compute_resource_integral(
 
 
 def solve_model_by_finite_differences(
-    model: Model,
+    model: "Model",
     T: float,
     n_t: int,
     n_x: int,
