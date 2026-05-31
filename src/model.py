@@ -209,3 +209,10 @@ class Model:
         self.consumer_distribution, self.resource_distribution = (
             solve_model_by_spectral(self, *args, **kwargs)
         )
+
+    def density_to_individuals(self):
+        # Calcula la integral de n, y la guarde como otro parametro
+
+
+    def plot(self):
+        # Llama al modulo plot
