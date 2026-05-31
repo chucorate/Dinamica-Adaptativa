@@ -13,6 +13,7 @@ import numpy as np
 
 from src.metodos.diferencias_finitas import solve_model_by_finite_differences
 from src.metodos.espectral import solve_model_by_spectral
+from src.plot import plot_solution, plot_kernel, plot_1D
 
 # Type para funciones que toman arreglos de numpy y retornan arreglos de numpy
 VectorizedFunction = Callable[[np.ndarray], np.ndarray]
@@ -74,6 +75,9 @@ class Model:
         # Su construcción depende del método numérico utilizado para resolver la EDP.
         self.consumer_distribution: np.ndarray
         self.resource_distribution: np.ndarray
+
+        # Clase para plotear las funciones
+        self.plot = Plot(self)
 
     def set_consumer_growth_rate(self, vectorized_function: VectorizedFunction) -> None:
         """
@@ -193,9 +197,11 @@ class Model:
                 imponiendo periodicidad en la variable
                 de rasgo.
         """
-        self.consumer_distribution, self.resource_distribution = (
-            solve_model_by_finite_differences(self, T, n_t, n_x, n_y, border_type)
-        )
+        (
+            self.consumer_distribution,
+            self.consumer_quantity,
+            self.resource_distribution,
+        ) = solve_model_by_finite_differences(self, T, n_t, n_x, n_y, border_type)
 
     def solve_by_spectral(
         self,
@@ -210,9 +216,28 @@ class Model:
             solve_model_by_spectral(self, *args, **kwargs)
         )
 
-    def density_to_individuals(self):
-        # Calcula la integral de n, y la guarde como otro parametro
 
+class Plot:
+    def __init__(self, parent_model: "Model") -> None:
+        self.model = parent_model
 
-    def plot(self):
-        # Llama al modulo plot
+    def solution_over_time(
+        self,
+        solution: Literal["consumer-density", "consumer-quantity", "resource"],
+        **kwargs,
+    ) -> None:
+        plot_solution(self.model, solution, **kwargs)
+
+    def kernel(
+        self,
+        form: Literal["heat", "3D"],
+        **kwargs,
+    ) -> None:
+        plot_kernel(self.model, form, **kwargs)
+
+    def unidimensional_function(
+        self,
+        solution: Literal["c-growth, c-decay, r-growth, r-decay"],
+        **kwargs,
+    ) -> None:
+        plot_1D(self.model, solution, **kwargs)

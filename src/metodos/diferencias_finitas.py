@@ -68,7 +68,7 @@ def solve_model_by_finite_differences(
     n_x: int,
     n_y: int,
     border_type: Literal["neumann", "periodic"],
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     # Discretización del espacio de rasgos, para consumer y resource.
     # De momento, se asume que solo hay un rasgo en consumer y resource domain
     x_min, x_max = cast(tuple[float, float], model.consumer_domain[0])
@@ -121,4 +121,8 @@ def solve_model_by_finite_differences(
             resouce_supply_rate - prev_resource * (resource_decay + resource_integral)
         )
 
-    return consumer_distribution, resource_distribution
+    consumer_quantity = compute_consumer_integral(
+        consumer_distribution, np.ones_like(x), hx
+    )
+
+    return consumer_distribution, consumer_quantity, resource_distribution
