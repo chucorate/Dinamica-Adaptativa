@@ -114,11 +114,13 @@ def solve_model_by_finite_differences(
 
         # Obtener resource_distribution a tiempo k
         resource_integral = compute_resource_integral(
-            kernel, consumer_growth_rate, prev_consumer, hx
+            kernel, consumer_growth_rate, consumer_distribution[k, :], hx
         )
 
-        resource_distribution[k, :] = prev_resource + delta_t * (
-            resouce_supply_rate - prev_resource * (resource_decay + resource_integral)
+        resource_distribution[k, :] = (
+            prev_resource + delta_t * resouce_supply_rate
+        ) / (
+            1.0 + delta_t * (resource_decay + resource_integral)
         )
 
     consumer_quantity = compute_consumer_integral(
