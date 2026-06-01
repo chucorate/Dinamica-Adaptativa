@@ -85,9 +85,7 @@ def plot_solution(
         xlabel = "Resource trait"
 
     else:
-        raise ValueError(
-            f"Unknown solution '{solution}'"
-        )
+        raise ValueError(f"Unknown solution '{solution}'")
 
     X, T = np.meshgrid(x, t)
 
@@ -103,7 +101,7 @@ def plot_solution(
 
         default_kwargs.update(kwargs)
 
-        plt.imshow( Z, **default_kwargs)
+        plt.imshow(Z, **default_kwargs)
         plt.xlabel(xlabel)
         plt.ylabel("Time")
         plt.colorbar()
@@ -117,7 +115,6 @@ def plot_solution(
 
     # SURFACE
     elif plot_type == "surface":
-
         fig = plt.figure()
 
         ax = fig.add_subplot(111, projection="3d")
@@ -129,7 +126,7 @@ def plot_solution(
 
     else:
         raise ValueError(f"Unknown plot_type '{plot_type}'")
-    
+
     plt.show()
 
 

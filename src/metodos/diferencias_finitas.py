@@ -68,6 +68,7 @@ def solve_model_by_finite_differences(
     n_x: int,
     n_y: int,
     border_type: Literal["neumann", "periodic"],
+    use_stationary_resource: bool,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     # Discretización del espacio de rasgos, para consumer y resource.
     # De momento, se asume que solo hay un rasgo en consumer y resource domain
@@ -83,13 +84,6 @@ def solve_model_by_finite_differences(
     t = np.linspace(0, T, n_t)
     delta_t = cast(float, t[1] - t[0])
 
-    # Inicializamos la matriz de consumer y resource
-    consumer_distribution = np.zeros((n_t, n_x))
-    consumer_distribution[0, :] = model.initial_consumer_distribution(x)
-
-    resource_distribution = np.zeros((n_t, n_y))
-    resource_distribution[0, :] = model.initial_resource_distribution(y)
-
     # Precalculamos parámetros del modelo que no dependen del tiempo
     lamb = model.mutation_rate * delta_t / (hx**2)
     A = get_sparse_matrix(lamb, n_x, border_type)
@@ -97,8 +91,23 @@ def solve_model_by_finite_differences(
     kernel = model.resource_consumer_kernel(x[:, None], y[None, :])
     consumer_growth_rate = model.consumer_growth_rate(x)
     consumer_decay = model.consumer_decay(x)
-    resouce_supply_rate = model.resource_supply_rate(y)
+    resource_supply_rate = model.resource_supply_rate(y)
     resource_decay = model.resource_decay(y)
+
+    # Inicializamos la matriz de consumer y resource
+    consumer_distribution = np.zeros((n_t, n_x))
+    consumer_distribution[0, :] = model.initial_consumer_distribution(x)
+
+    resource_distribution = np.zeros((n_t, n_y))
+    if use_stationary_resource:
+        resource_integral = compute_resource_integral(
+            kernel, consumer_growth_rate, consumer_distribution[0, :], hx
+        )
+        resource_distribution[0, :] = resource_supply_rate / (
+            resource_decay + resource_integral
+        )
+    else:
+        resource_distribution[0, :] = model.initial_resource_distribution(y)
 
     for k in range(1, n_t):
         prev_consumer = consumer_distribution[k - 1, :]
@@ -117,11 +126,15 @@ def solve_model_by_finite_differences(
             kernel, consumer_growth_rate, consumer_distribution[k, :], hx
         )
 
-        resource_distribution[k, :] = (
-            prev_resource + delta_t * resouce_supply_rate
-        ) / (
-            1.0 + delta_t * (resource_decay + resource_integral)
-        )
+        if use_stationary_resource:
+            resource_distribution[k, :] = resource_supply_rate / (
+                resource_decay + resource_integral
+            )
+        else:
+            resource_distribution[k, :] = prev_resource + delta_t * (
+                resource_supply_rate
+                - prev_resource * (resource_decay + resource_integral)
+            )
 
     consumer_quantity = compute_consumer_integral(
         consumer_distribution, np.ones_like(x), hx

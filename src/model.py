@@ -158,6 +158,7 @@ class Model:
         n_x: int,
         n_y: int,
         border_type: Literal["neumann", "periodic"],
+        use_stationary_resource: bool,
     ) -> None:
         """
         Resuelve numéricamente el sistema de EDPs de
@@ -201,7 +202,9 @@ class Model:
             self.consumer_distribution,
             self.consumer_quantity,
             self.resource_distribution,
-        ) = solve_model_by_finite_differences(self, T, n_t, n_x, n_y, border_type)
+        ) = solve_model_by_finite_differences(
+            self, T, n_t, n_x, n_y, border_type, use_stationary_resource
+        )
 
     def solve_by_spectral(
         self,
