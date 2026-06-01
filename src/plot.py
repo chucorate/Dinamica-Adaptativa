@@ -8,31 +8,40 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animate
 
+from src.funciones_generales import (
+    consumer_grid,
+    resource_grid,
+    time_grid,
+)
+
 if TYPE_CHECKING:
     from src.model import Model
 
 
-def _consumer_grid(model) -> np.ndarray:
-    xmin, xmax = model.consumer_domain[0]
-    nx = model.consumer_distribution.shape[1]
+class Plot:
+    def __init__(self, parent_model: "Model") -> None:
+        self.model = parent_model
 
-    return np.linspace(xmin, xmax, nx)
+    def solution_over_time(
+        self,
+        solution: Literal["consumer-density", "consumer-quantity", "resource"],
+        **kwargs,
+    ) -> None:
+        plot_solution(self.model, solution, **kwargs)
 
+    def kernel(
+        self,
+        form: Literal["heat", "3D"],
+        **kwargs,
+    ) -> None:
+        plot_kernel(self.model, form, **kwargs)
 
-def _resource_grid(model) -> np.ndarray:
-    ymin, ymax = model.resource_domain[0]
-    ny = model.resource_distribution.shape[1]
-
-    return np.linspace(ymin, ymax, ny)
-
-
-def _time_grid(model) -> np.ndarray:
-    nt = model.consumer_distribution.shape[0]
-
-    if hasattr(model, "T"):
-        return np.linspace(0.0, model.T, nt)
-
-    return np.arange(nt)
+    def unidimensional_function(
+        self,
+        solution: Literal["c-growth, c-decay, r-growth, r-decay"],
+        **kwargs,
+    ) -> None:
+        plot_1D(self.model, solution, **kwargs)
 
 
 def plot_solution(
@@ -61,7 +70,7 @@ def plot_solution(
         de matplotlib correspondiente.
     """
 
-    t = _time_grid(model)
+    t, _ = time_grid(model)
 
     # POBLACIÓN TOTAL
     if solution == "consumer-quantity":
@@ -74,13 +83,13 @@ def plot_solution(
 
     # CONSUMIDORES
     if solution == "consumer-density":
-        x = _consumer_grid(model)
+        x, _ = consumer_grid(model)
         Z = model.consumer_distribution
         xlabel = "Consumer trait"
 
     # RECURSOS
     elif solution == "resource":
-        x = _resource_grid(model)
+        x, _ = resource_grid(model)
         Z = model.resource_distribution
         xlabel = "Resource trait"
 

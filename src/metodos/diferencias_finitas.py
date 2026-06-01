@@ -1,20 +1,31 @@
 from typing import TYPE_CHECKING, cast, Literal
+
 import numpy as np
 from scipy.sparse import diags, csc_matrix, lil_matrix, eye
 from scipy.sparse.linalg import spsolve
+
+from src.funciones_generales import (
+    dtype,
+    get_simpson_weights,
+    compute_consumer_integral,
+    compute_resource_integral,
+    compute_stationary_resource,
+    consumer_grid,
+    resource_grid,
+    time_grid,
+)
 
 if TYPE_CHECKING:
     from src.model import Model
 
 
-dtype = np.float64
-
-
 def get_laplacian_matrix(
-    N_x: int, dx: float,border_type: Literal["neumann", "periodic"],
+    N_x: int,
+    dx: float,
+    border_type: Literal["neumann", "periodic"],
 ) -> csc_matrix:
     """Genera la matriz del operador -D * d^2/dx^2 (Laplaciano negativo).
-    
+
     No incluye delta_t ni la identidad, permitiendo flexibilidad para el esquema theta.
     """
     inv_dx2 = 1.0 / (dx**2)
@@ -43,70 +54,33 @@ def get_laplacian_matrix(
     return cast(csc_matrix, L.tocsc())
 
 
-def _get_simpson_weights(N: int, h: float) -> np.ndarray:
-    """Genera un vector de pesos de Simpson de tamaño N. Requires N impar."""
-    if N % 2 == 0:
-        raise ValueError("La regla de Simpson requiere un número IMPAR de puntos (N).")
-
-    weights = np.ones(N, dtype=dtype)
-    weights[1:-1:2] = 4.0
-    weights[2:-1:2] = 2.0
-
-    return (h / 3.0) * weights
-
-
-def compute_consumer_integral(
-    kernel: np.ndarray,
-    resource_distribution: np.ndarray,
-    weights: np.ndarray,
-) -> np.ndarray:
-    """I_i = ∫ K(x_i, y) R(y) dy"""
-    weighted_resource = weights * resource_distribution
-    return kernel @ weighted_resource
-
-
-def compute_resource_integral(
-    kernel: np.ndarray,
-    growth_rate: np.ndarray,
-    consumer_distribution: np.ndarray,
-    weights: np.ndarray,
-) -> np.ndarray:
-    """J_j = ∫ r(x) K(x, y_j) n(x) dx"""
-    weighted_consumer = weights * growth_rate * consumer_distribution
-    return kernel.T @ weighted_consumer
-
-
 def solve_model_by_finite_differences(
     model: "Model",
-    T: float,
-    n_t: int,
-    n_x: int,
-    n_y: int,
     border_type: Literal["neumann", "periodic"],
     use_stationary_resource: bool,
     theta: float = 0.5,  # Por defecto: Crank-Nicolson
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Resuelve el sistema mutación-selección-recurso mediante
+    diferencias finitas en el espacio y un esquema theta
+    implícito para la ecuación del consumidor.
+
+    Admite recursos estacionarios o dinámicos.
+    """
 
     # 1. Discretización del dominio
-    x_min, x_max = cast(tuple[float, float], model.consumer_domain[0])
-    x = np.linspace(x_min, x_max, n_x, dtype=dtype)
-    hx = cast(float, x[1] - x[0])
-
-    y_min, y_max = cast(tuple[float, float], model.resource_domain[0])
-    y = np.linspace(y_min, y_max, n_y, dtype=dtype)
-    hy = cast(float, y[1] - y[0])
-
-    t = np.linspace(0, T, n_t, dtype=dtype)
-    delta_t = cast(float, t[1] - t[0])
+    x, hx = consumer_grid(model)
+    y, hy = resource_grid(model)
+    _, delta_t = time_grid(model)
 
     # 2. Obtenemos pesos de Simpson para las integrales
-    weights_x = _get_simpson_weights(n_x, hx)
-    weights_y = _get_simpson_weights(n_y, hy)
+    weights_x = get_simpson_weights(model.n_x, hx)
+    weights_y = get_simpson_weights(model.n_y, hy)
 
     # 3. Operadores espaciales fijos de mutación (Laplaciano)
     # L representa el término difusivo puro. Multiplicamos por la tasa de mutación.
-    L = model.mutation_rate * get_laplacian_matrix(n_x, hx, border_type)
-    I_sparse = eye(n_x, format="csc", dtype=dtype)
+    L = model.mutation_rate * get_laplacian_matrix(model.n_x, hx, border_type)
+    I_sparse = eye(model.n_x, format="csc", dtype=dtype)
 
     # Precalcular la matriz explícita del pasado (B) que no cambia en el bucle
     B_theta = I_sparse - (1.0 - theta) * delta_t * L
@@ -124,14 +98,14 @@ def solve_model_by_finite_differences(
     # fmt: off
     if use_stationary_resource:
         consumer_distribution, resource_distribution = _solve_stationary_resource(
-            n_t, n_x, n_y, delta_t, theta, I_sparse, L, B_theta, weights_x, weights_y, kernel,
+            model.n_t, model.n_x, model.n_y, delta_t, theta, I_sparse, L, B_theta, weights_x, weights_y, kernel,
             consumer_growth_rate, consumer_decay, resource_supply_rate, resource_decay,
             initial_consumer
         )
     else:
         initial_resource = model.initial_resource_distribution(y).astype(dtype)
         consumer_distribution, resource_distribution = _solve_dynamic_resource(
-            n_t, n_x, n_y, delta_t, theta, I_sparse, L, B_theta, weights_x, weights_y, kernel,
+            model.n_t, model.n_x, model.n_y, delta_t, theta, I_sparse, L, B_theta, weights_x, weights_y, kernel,
             consumer_growth_rate, consumer_decay, resource_supply_rate, resource_decay,
             initial_consumer, initial_resource
         )
@@ -170,10 +144,14 @@ def _solve_stationary_resource(
     consumer_dist[0, :] = initial_consumer
 
     # Inicialización del recurso en t=0
-    resource_integral = compute_resource_integral(
-        kernel, consumer_growth_rate, consumer_dist[0, :], weights_x
+    resource_dist[0, :] = compute_stationary_resource(
+        kernel,
+        consumer_growth_rate,
+        consumer_dist[0, :],
+        weights_x,
+        resource_supply_rate,
+        resource_decay,
     )
-    resource_dist[0, :] = resource_supply_rate / (resource_decay + resource_integral)
 
     for k in range(1, n_t):
         prev_consumer = consumer_dist[k - 1, :]
@@ -182,18 +160,26 @@ def _solve_stationary_resource(
         # 1. Integrales y tasa de crecimiento basada en el paso anterior
         consumer_integral = compute_consumer_integral(kernel, prev_resource, weights_y)
         g = consumer_growth_rate * consumer_integral - consumer_decay
-        
+
         # 2. Ensamblar sistema Theta: (I + theta*dt*L - dt*G) u^{n+1} = B_theta u^n
-        A_implicit = I_sparse + theta * delta_t * L - delta_t * diags(g, format="csc", dtype=dtype)
+        A_implicit = (
+            I_sparse
+            + theta * delta_t * L
+            - delta_t * diags(g, format="csc", dtype=dtype)
+        )
         lado_derecho = B_theta @ prev_consumer
-        
+
         consumer_dist[k, :] = spsolve(A_implicit, lado_derecho)
 
         # 3. Actualización algebraica del recurso de forma síncrona
-        resource_integral = compute_resource_integral(
-            kernel, consumer_growth_rate, consumer_dist[k, :], weights_x
+        resource_dist[k, :] = compute_stationary_resource(
+            kernel,
+            consumer_growth_rate,
+            consumer_dist[k, :],
+            weights_x,
+            resource_supply_rate,
+            resource_decay,
         )
-        resource_dist[k, :] = resource_supply_rate / (resource_decay + resource_integral)
 
     return consumer_dist, resource_dist
 
@@ -231,10 +217,14 @@ def _solve_dynamic_resource(
         # 1. Evolución del consumidor vía esquema Theta
         consumer_integral = compute_consumer_integral(kernel, prev_resource, weights_y)
         g = consumer_growth_rate * consumer_integral - consumer_decay
-        
-        A_implicit = I_sparse + theta * delta_t * L - delta_t * diags(g, format="csc", dtype=dtype)
+
+        A_implicit = (
+            I_sparse
+            + theta * delta_t * L
+            - delta_t * diags(g, format="csc", dtype=dtype)
+        )
         lado_derecho = B_theta @ prev_consumer
-        
+
         consumer_dist[k, :] = spsolve(A_implicit, lado_derecho)
 
         # 2. Evolución explícita del recurso (con el consumidor ya actualizado en k)
@@ -242,6 +232,8 @@ def _solve_dynamic_resource(
             kernel, consumer_growth_rate, consumer_dist[k, :], weights_x
         )
         factor = delta_t * (resource_decay + resource_integral)
-        resource_dist[k, :] = prev_resource * (1.0 - factor) + delta_t * resource_supply_rate
+        resource_dist[k, :] = (
+            prev_resource * (1.0 - factor) + delta_t * resource_supply_rate
+        )
 
     return consumer_dist, resource_dist

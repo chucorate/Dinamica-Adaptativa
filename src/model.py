@@ -13,7 +13,7 @@ import numpy as np
 
 from src.metodos.diferencias_finitas import solve_model_by_finite_differences
 from src.metodos.espectral import solve_model_by_spectral
-from src.plot import plot_solution, plot_kernel, plot_1D
+from src.plot import Plot
 
 # Type para funciones que toman arreglos de numpy y retornan arreglos de numpy
 VectorizedFunction = Callable[[np.ndarray], np.ndarray]
@@ -162,51 +162,80 @@ class Model:
         use_stationary_resource: bool,
     ) -> None:
         """
-        Resuelve numéricamente el sistema de EDPs de
-        mutación-selección mediante diferencias finitas.
+        Resuelve numéricamente el modelo de mutación-selección mediante
+        diferencias finitas.
+
+        El término difusivo asociado a las mutaciones se discretiza mediante
+        diferencias finitas de segundo orden, mientras que los términos de
+        selección e interacción consumidor-recurso se evalúan a través de
+        cuadraturas numéricas. Dependiendo del valor de `theta` se obtienen
+        distintos métodos de resolución:
+
+        - `theta = 0`: Euler explícito.
+        - `theta = 0.5`: Crank–Nicolson.
+        - `theta = 1`: Euler implícito.
+
+        Además, el recurso puede modelarse como dinámico o suponerse en
+        equilibrio cuasi-estacionario en cada paso temporal.
 
         Parameters
         ----------
         T : float
-            Tiempo final de simulación. La solución se aproxima para t ∈ [0, T].
+            Tiempo final de simulación.
 
         n_t : int
             Número de puntos de discretización temporal.
 
         n_x : int
-            Número de puntos de discretización del espacio de rasgos de
-            los consumidores.
-
-            Se utiliza para aproximar la distribución n(x, t) sobre el
-            dominio de consumidores.
+            Número de puntos de discretización del dominio de rasgos de los
+            consumidores.
 
         n_y : int
-            Número de puntos de discretización del espacio
-            de rasgos de los recursos.
+            Número de puntos de discretización del dominio de rasgos de los
+            recursos.
 
-            Se utiliza para aproximar la distribución
-            R(y, t) sobre el dominio de recursos.
+        border_type : {"neumann", "periodic"}
+            Condición de borde utilizada para el operador de difusión.
 
-        border_type : ["neumann", "periodic"]
-            Tipo de condición de borde utilizada para el
-            operador de difusión asociado a las mutaciones.
+            - `"neumann"`:
+            Flujo nulo en los extremos del dominio
+            (:math:`\\partial_x n = 0`).
 
-            - "neumann":
-                Flujo nulo en los extremos del dominio (∂n/∂x = 0).
+            - `"periodic"`:
+            Condiciones periódicas en la variable de rasgo.
 
-            - "periodic":
-                Identifica ambos extremos del dominio,
-                imponiendo periodicidad en la variable
-                de rasgo.
+        theta : float
+            Parámetro del esquema temporal θ. Debe satisfacer `0 ≤ theta ≤ 1`.
+
+            Valores habituales:
+
+            - `0`: Euler explícito.
+            - `0.5`: Crank–Nicolson.
+            - `1`: Euler implícito.
+
+        use_stationary_resource : bool
+            - Si es ``True``, el recurso se considera estacionario y se obtiene explícitamente.
+            - Si es ``False``, se resuelve la ecuación temporal del recurso.
         """
+        assert 0 <= theta and theta <= 1
+        assert T > 0
+        assert isinstance(n_t, int) and n_t > 0
+        assert isinstance(n_x, int) and n_x > 0
+        assert isinstance(n_y, int) and n_y > 0
+        assert border_type in ["neumann", "periodic"]
+        assert isinstance(use_stationary_resource, bool)
+
         self.T = T
+        self.n_t = n_t
+        self.n_x = n_x
+        self.n_y = n_y
 
         (
             self.consumer_distribution,
             self.consumer_quantity,
             self.resource_distribution,
         ) = solve_model_by_finite_differences(
-            self, T, n_t, n_x, n_y, border_type, use_stationary_resource, theta
+            self, border_type, use_stationary_resource, theta
         )
 
     def solve_by_spectral(
@@ -219,46 +248,22 @@ class Model:
     ) -> None:
         """Resuelve numéricamente el sistema mediante el método espectral."""
         self.T = T
-        
+
         # Invocación al submódulo que acabamos de escribir
-        self.consumer_distribution, self.resource_distribution = solve_model_by_spectral(
-            self, T, n_t, n_x, n_y, use_stationary_resource
+        self.consumer_distribution, self.resource_distribution = (
+            solve_model_by_spectral(self, T, n_t, n_x, n_y, use_stationary_resource)
         )
-        
+
         # Calcular los pesos para la cantidad global acumulada al final de forma limpia
-        from src.metodos.espectral import _get_simpson_weights
+        from src.funciones_generales import get_simpson_weights
+
         xmin, xmax = self.consumer_domain[0]
         hx = (xmax - xmin) / (n_x - 1)
-        weights_x = _get_simpson_weights(n_x, hx)
-        
+        weights_x = get_simpson_weights(n_x, hx)
+
         # Reutilizamos tu función de integración vectorizada
         from src.metodos.diferencias_finitas import compute_consumer_integral
+
         self.consumer_quantity = compute_consumer_integral(
             self.consumer_distribution, np.ones_like(weights_x), weights_x
         )
-
-
-class Plot:
-    def __init__(self, parent_model: "Model") -> None:
-        self.model = parent_model
-
-    def solution_over_time(
-        self,
-        solution: Literal["consumer-density", "consumer-quantity", "resource"],
-        **kwargs,
-    ) -> None:
-        plot_solution(self.model, solution, **kwargs)
-
-    def kernel(
-        self,
-        form: Literal["heat", "3D"],
-        **kwargs,
-    ) -> None:
-        plot_kernel(self.model, form, **kwargs)
-
-    def unidimensional_function(
-        self,
-        solution: Literal["c-growth, c-decay, r-growth, r-decay"],
-        **kwargs,
-    ) -> None:
-        plot_1D(self.model, solution, **kwargs)

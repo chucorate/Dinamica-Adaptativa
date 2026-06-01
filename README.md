@@ -15,14 +15,14 @@ Esto va a crear el entorno virtual `dinamica-adaptativa`, el cuál debe utilizar
 - [x] Resolver esquema general unidimensional.
 - [ ] Crear funciones para plotear las funciones del modelo y la solución.
 - [ ] Estudiar monomorficidad y dimorficidad.
-- [ ] Probar distintos métodos de diferencias finitas (explícito, implícito y semi-implícito).
+- [x] Probar distintos métodos de diferencias finitas (explícito, implícito y semi-implícito).
 - [ ] Ver qué pasa al cambiar condiciones en tiempos arbitrarios.
 - [ ] Resolver esquema general bidimensional.
 - [ ] Estudiar polimorficidad.
 
 # Consideraciones
 
-- [ ] Simular para el caso gaussiano.
+- [x] Simular para el caso gaussiano.
 - [ ] Simular canibalismo
 - [ ] Encontrar CFL
 - [ ] Estudiar oscilaciones y sus posibles orígenes

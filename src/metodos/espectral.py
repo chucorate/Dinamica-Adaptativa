@@ -1,29 +1,11 @@
-from typing import TYPE_CHECKING
-
-import numpy as np
-import scipy as sp
-
-if TYPE_CHECKING:
-    from src.model import Model
-
-
 from typing import TYPE_CHECKING, cast
+
 import numpy as np
+
+from src.funciones_generales import dtype, get_simpson_weights
 
 if TYPE_CHECKING:
     from src.model import Model
-
-dtype = np.float64
-
-
-def _get_simpson_weights(N: int, h: float) -> np.ndarray:
-    """Genera un vector de pesos de Simpson de tamaño N. Requiere N impar."""
-    if N % 2 == 0:
-        raise ValueError("El método espectral con integración de Simpson requiere un número IMPAR de puntos (N).")
-    weights = np.ones(N, dtype=dtype)
-    weights[1:-1:2] = 4.0
-    weights[2:-1:2] = 2.0
-    return (h / 3.0) * weights
 
 
 def _compute_growth_rate(
@@ -52,7 +34,9 @@ def solve_model_by_spectral(
     para el espacio y un esquema integrador temporal IMEX de segundo orden.
     """
     if not use_stationary_resource:
-        raise NotImplementedError("Por el momento solo se admitre recurso estacionario en el método espectral.")
+        raise NotImplementedError(
+            "Por el momento solo se admitre recurso estacionario en el método espectral."
+        )
 
     # 1. Discretización del dominio espacial
     x_min, x_max = cast(tuple[float, float], model.consumer_domain[0])
@@ -68,8 +52,8 @@ def solve_model_by_spectral(
     delta_t = cast(float, t[1] - t[0])
 
     # Pesos de Simpson para las integrales no locales
-    weights_x = _get_simpson_weights(n_x, hx)
-    weights_y = _get_simpson_weights(n_y, hy)
+    weights_x = get_simpson_weights(n_x, hx)
+    weights_y = get_simpson_weights(n_y, hy)
 
     # 2. Configuración de frecuencias de Fourier para el Laplaciano (x)
     frequencies = np.fft.fftfreq(n_x, d=hx)
@@ -81,9 +65,6 @@ def solve_model_by_spectral(
 
     # 3. Parámetros del modelo y normalización forzada del Kernel
     kernel = model.resource_consumer_kernel(x[:, None], y[None, :]).astype(dtype)
-    kernel_norm = kernel @ weights_y
-    kernel = kernel / kernel_norm[:, None]
-
     consumer_growth_rate = model.consumer_growth_rate(x).astype(dtype)
     consumer_decay = model.consumer_decay(x).astype(dtype)
     resource_supply_rate = model.resource_supply_rate(y).astype(dtype)
@@ -107,7 +88,9 @@ def solve_model_by_spectral(
         prev_resource = resource_dist[n - 1, :].copy()
 
         # --- PASO DE PREDICCIÓN (IMEX Euler) ---
-        g_n = _compute_growth_rate(kernel, prev_resource, weights_y, consumer_growth_rate, consumer_decay)
+        g_n = _compute_growth_rate(
+            kernel, prev_resource, weights_y, consumer_growth_rate, consumer_decay
+        )
         reaccion_real = g_n * prev_consumer
 
         # Transformadas de Fourier (vectores de tamaño n_x)
@@ -115,9 +98,11 @@ def solve_model_by_spectral(
         reaccion_hat = np.fft.fft(reaccion_real)
 
         # Avanzar el predictor en Fourier y regresar al espacio real
-        pred_consumer_hat = (consumer_hat + delta_t * reaccion_hat) * implicit_diffusion_factor
+        pred_consumer_hat = (
+            consumer_hat + delta_t * reaccion_hat
+        ) * implicit_diffusion_factor
         pred_consumer = np.real(np.fft.ifft(pred_consumer_hat))
-        
+
         # Corrección de umbral para evitar que se reduzca a un escalar
         pred_consumer = np.clip(pred_consumer, 0.0, None)
 
@@ -127,15 +112,19 @@ def solve_model_by_spectral(
         pred_resource = resource_supply_rate / (resource_decay + pred_resource_integral)
 
         # --- PASO DE CORRECCIÓN (IMEX Crank-Nicolson / Heun Espectral) ---
-        g_pred = _compute_growth_rate(kernel, pred_resource, weights_y, consumer_growth_rate, consumer_decay)
+        g_pred = _compute_growth_rate(
+            kernel, pred_resource, weights_y, consumer_growth_rate, consumer_decay
+        )
         reaccion_pred_real = g_pred * pred_consumer
 
         # Promediar crecimiento en Fourier
         reaccion_promedio_hat = 0.5 * (reaccion_hat + np.fft.fft(reaccion_pred_real))
 
         # Inversa definitiva para el paso n
-        final_consumer_hat = (consumer_hat + delta_t * reaccion_promedio_hat) * implicit_diffusion_factor
-        
+        final_consumer_hat = (
+            consumer_hat + delta_t * reaccion_promedio_hat
+        ) * implicit_diffusion_factor
+
         # Guardar estrictamente en la fila correspondiente de la matriz
         consumer_dist[n, :] = np.real(np.fft.ifft(final_consumer_hat))
         consumer_dist[n, :] = np.clip(consumer_dist[n, :], 0.0, None)
@@ -143,6 +132,8 @@ def solve_model_by_spectral(
         # 4. Actualización definitiva del recurso estacionario en la matriz
         weighted_final_consumer = weights_x * consumer_growth_rate * consumer_dist[n, :]
         final_resource_integral = kernel.T @ weighted_final_consumer
-        resource_dist[n, :] = resource_supply_rate / (resource_decay + final_resource_integral)
+        resource_dist[n, :] = resource_supply_rate / (
+            resource_decay + final_resource_integral
+        )
 
     return consumer_dist, resource_dist
