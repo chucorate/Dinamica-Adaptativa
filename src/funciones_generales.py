@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, cast
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -6,6 +7,57 @@ dtype = np.float64
 
 if TYPE_CHECKING:
     from src.model import Model
+
+
+@dataclass(frozen=True)
+class ModelCoefficients:
+    """
+    Agrupa los coeficientes espaciales del modelo evaluados sobre
+    las mallas de consumidores y recursos.
+
+    Su propósito es evitar reevaluar funciones durante la simulación y
+    reducir el número de argumentos que deben recibir los algoritmos
+    numéricos.
+
+    Attributes
+    ----------
+    kernel : np.ndarray
+        Matriz de interacción K(x_i, y_j) entre consumidores y recursos.
+
+    consumer_growth_rate : np.ndarray
+        Tasa de crecimiento r(x_i) de cada rasgo de consumidor.
+
+    consumer_decay : np.ndarray
+        Tasa de mortalidad o decaimiento m₁(x_i) de cada rasgo de consumidor.
+
+    resource_supply_rate : np.ndarray
+        Tasa de aporte externo R_in(y_j) de cada rasgo de recurso.
+
+    resource_decay : np.ndarray
+        Tasa de decaimiento natural m₂(y_j) de cada rasgo de recurso.
+    """
+
+    kernel: np.ndarray
+    consumer_growth_rate: np.ndarray
+    consumer_decay: np.ndarray
+    resource_supply_rate: np.ndarray
+    resource_decay: np.ndarray
+
+
+def build_model_coefficients(
+    model: "Model",
+    x: np.ndarray,
+    y: np.ndarray,
+) -> ModelCoefficients:
+    """Evalúa y almacena todos los coeficientes funcionales del modelo."""
+
+    return ModelCoefficients(
+        kernel=model.resource_consumer_kernel(x[:, None], y[None, :]).astype(dtype),
+        consumer_growth_rate=model.consumer_growth_rate(x).astype(dtype),
+        consumer_decay=model.consumer_decay(x).astype(dtype),
+        resource_supply_rate=model.resource_supply_rate(y).astype(dtype),
+        resource_decay=model.resource_decay(y).astype(dtype),
+    )
 
 
 def consumer_grid(model: "Model") -> tuple[np.ndarray, float]:
@@ -90,12 +142,9 @@ def compute_resource_integral(
 
 
 def compute_stationary_resource(
-    kernel: np.ndarray,
-    consumer_growth_rate: np.ndarray,
     consumer_distribution: np.ndarray,
     weights_x: np.ndarray,
-    resource_supply_rate: np.ndarray,
-    resource_decay: np.ndarray,
+    coeffs: ModelCoefficients,
 ) -> np.ndarray:
     """
     Calcula el recurso estacionario
@@ -105,7 +154,7 @@ def compute_stationary_resource(
     """
 
     resource_integral = compute_resource_integral(
-        kernel, consumer_growth_rate, consumer_distribution, weights_x
+        coeffs.kernel, coeffs.consumer_growth_rate, consumer_distribution, weights_x
     )
 
-    return resource_supply_rate / (resource_decay + resource_integral)
+    return coeffs.resource_supply_rate / (coeffs.resource_decay + resource_integral)

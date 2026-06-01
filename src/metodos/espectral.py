@@ -1,34 +1,70 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
+from dataclasses import dataclass
 
 import numpy as np
 
-from src.funciones_generales import dtype, get_simpson_weights
+from src.funciones_generales import (
+    dtype,
+    build_model_coefficients,
+    get_simpson_weights,
+    compute_consumer_integral,
+    compute_stationary_resource,
+    consumer_grid,
+    resource_grid,
+    time_grid,
+)
 
 if TYPE_CHECKING:
     from src.model import Model
 
 
-def _compute_growth_rate(
-    kernel: np.ndarray,
-    resource: np.ndarray,
-    weights_y: np.ndarray,
-    consumer_growth_rate: np.ndarray,
-    consumer_decay: np.ndarray,
-) -> np.ndarray:
-    """Calcula la tasa de selección g(x) = r(x) * ∫ K(x, y) R(y) dy - m1(x)"""
-    weighted_resource = weights_y * resource
-    consumer_integral = kernel @ weighted_resource
-    return consumer_growth_rate * consumer_integral - consumer_decay
+@dataclass(frozen=True)
+class SpectralScheme:
+    """
+    Agrupa todos los operadores precomputados asociados
+    al método pseudo-espectral de Fourier.
+
+    Attributes
+    ----------
+    implicit_diffusion_factor : np.ndarray
+        Factor diagonal utilizado para tratar implícitamente
+        la difusión en el espacio de Fourier.
+
+    laplacian_kernel : np.ndarray
+        Símbolo espectral del operador de mutación.
+    """
+
+    implicit_diffusion_factor: np.ndarray
+    laplacian_kernel: np.ndarray
+
+
+def build_spectral_scheme(
+    model: "Model",
+    hx: float,
+    delta_t: float,
+) -> SpectralScheme:
+    """Construye los operadores espectrales precomputados."""
+
+    frequencies = np.fft.fftfreq(model.n_x, d=hx)
+    k = 2.0 * np.pi * frequencies
+
+    laplacian_kernel = -model.mutation_rate * (k**2)
+
+    implicit_diffusion_factor = 1.0 / (1.0 - delta_t * laplacian_kernel)
+
+    return SpectralScheme(
+        implicit_diffusion_factor=implicit_diffusion_factor,
+        laplacian_kernel=laplacian_kernel,
+    )
+
+
+# Función orquestadora de método espectral
 
 
 def solve_model_by_spectral(
     model: "Model",
-    T: float,
-    n_t: int,
-    n_x: int,
-    n_y: int,
     use_stationary_resource: bool = True,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Resuelve el sistema de mutación-selección utilizando el método pseudo-espectral de Fourier
     para el espacio y un esquema integrador temporal IMEX de segundo orden.
@@ -39,101 +75,118 @@ def solve_model_by_spectral(
         )
 
     # 1. Discretización del dominio espacial
-    x_min, x_max = cast(tuple[float, float], model.consumer_domain[0])
-    x = np.linspace(x_min, x_max, n_x, dtype=dtype)
-    hx = cast(float, x[1] - x[0])
-
-    y_min, y_max = cast(tuple[float, float], model.resource_domain[0])
-    y = np.linspace(y_min, y_max, n_y, dtype=dtype)
-    hy = cast(float, y[1] - y[0])
-
-    # Discretización temporal
-    t = np.linspace(0, T, n_t, dtype=dtype)
-    delta_t = cast(float, t[1] - t[0])
+    x, hx = consumer_grid(model)
+    y, hy = resource_grid(model)
+    _, dt = time_grid(model)
 
     # Pesos de Simpson para las integrales no locales
-    weights_x = get_simpson_weights(n_x, hx)
-    weights_y = get_simpson_weights(n_y, hy)
+    weights_x = get_simpson_weights(model.n_x, hx)
+    weights_y = get_simpson_weights(model.n_y, hy)
 
-    # 2. Configuración de frecuencias de Fourier para el Laplaciano (x)
-    frequencies = np.fft.fftfreq(n_x, d=hx)
-    k = 2.0 * np.pi * frequencies
-    laplacian_kernel = -model.mutation_rate * (k**2)
+    coeffs = build_model_coefficients(model, x, y)
+    scheme = build_spectral_scheme(model, hx, dt)
 
-    # Factor implícito de difusión (Vector de tamaño n_x)
-    implicit_diffusion_factor = 1.0 / (1.0 - delta_t * laplacian_kernel)
+    # Inicialización de las soluciones
+    consumer_dist = np.zeros((model.n_t, model.n_x), dtype=dtype)
+    resource_dist = np.zeros((model.n_t, model.n_y), dtype=dtype)
 
-    # 3. Parámetros del modelo y normalización forzada del Kernel
-    kernel = model.resource_consumer_kernel(x[:, None], y[None, :]).astype(dtype)
-    consumer_growth_rate = model.consumer_growth_rate(x).astype(dtype)
-    consumer_decay = model.consumer_decay(x).astype(dtype)
-    resource_supply_rate = model.resource_supply_rate(y).astype(dtype)
-    resource_decay = model.resource_decay(y).astype(dtype)
-
-    # 4. Inicialización de estructuras de almacenamiento matrices (n_t, n_x) y (n_t, n_y)
-    consumer_dist = np.zeros((n_t, n_x), dtype=dtype)
-    resource_dist = np.zeros((n_t, n_y), dtype=dtype)
-
-    # Condición inicial
+    # Evaluamos las condiciones iniciales
     consumer_dist[0, :] = model.initial_consumer_distribution(x).astype(dtype)
-
-    # Estado cuasi-estático inicial del recurso en t=0
-    weighted_consumer = weights_x * consumer_growth_rate * consumer_dist[0, :]
-    resource_integral = kernel.T @ weighted_consumer
-    resource_dist[0, :] = resource_supply_rate / (resource_decay + resource_integral)
+    resource_dist[0, :] = (
+        compute_stationary_resource(consumer_dist[0, :], weights_x, coeffs)
+        if use_stationary_resource
+        else model.initial_resource_distribution(y).astype(dtype)
+    )
 
     # Bucle temporal pseudo-espectral corregido
-    for n in range(1, n_t):
-        prev_consumer = consumer_dist[n - 1, :].copy()
-        prev_resource = resource_dist[n - 1, :].copy()
+    for k in range(1, model.n_t):
+        prev_consumer = consumer_dist[k - 1, :]
+        prev_resource = resource_dist[k - 1, :]
 
-        # --- PASO DE PREDICCIÓN (IMEX Euler) ---
-        g_n = _compute_growth_rate(
-            kernel, prev_resource, weights_y, consumer_growth_rate, consumer_decay
+        # Crecimiento evaluado en el estado actual
+        g_prev = (
+            coeffs.consumer_growth_rate
+            * compute_consumer_integral(coeffs.kernel, prev_resource, weights_y)
+            - coeffs.consumer_decay
         )
-        reaccion_real = g_n * prev_consumer
+        # Predictor IMEX-Euler
+        pred_consumer = spectral_predictor(prev_consumer, g_prev, dt, scheme)
+        pred_resource = compute_stationary_resource(pred_consumer, weights_x, coeffs)
 
-        # Transformadas de Fourier (vectores de tamaño n_x)
-        consumer_hat = np.fft.fft(prev_consumer)
-        reaccion_hat = np.fft.fft(reaccion_real)
-
-        # Avanzar el predictor en Fourier y regresar al espacio real
-        pred_consumer_hat = (
-            consumer_hat + delta_t * reaccion_hat
-        ) * implicit_diffusion_factor
-        pred_consumer = np.real(np.fft.ifft(pred_consumer_hat))
-
-        # Corrección de umbral para evitar que se reduzca a un escalar
-        pred_consumer = np.clip(pred_consumer, 0.0, None)
-
-        # Evaluar el recurso predicho futuro síncrono
-        weighted_pred_consumer = weights_x * consumer_growth_rate * pred_consumer
-        pred_resource_integral = kernel.T @ weighted_pred_consumer
-        pred_resource = resource_supply_rate / (resource_decay + pred_resource_integral)
-
-        # --- PASO DE CORRECCIÓN (IMEX Crank-Nicolson / Heun Espectral) ---
-        g_pred = _compute_growth_rate(
-            kernel, pred_resource, weights_y, consumer_growth_rate, consumer_decay
+        # Crecimiento evaluado en el predictor
+        g_pred = (
+            coeffs.consumer_growth_rate
+            * compute_consumer_integral(coeffs.kernel, pred_resource, weights_y)
+            - coeffs.consumer_decay
         )
-        reaccion_pred_real = g_pred * pred_consumer
-
-        # Promediar crecimiento en Fourier
-        reaccion_promedio_hat = 0.5 * (reaccion_hat + np.fft.fft(reaccion_pred_real))
-
-        # Inversa definitiva para el paso n
-        final_consumer_hat = (
-            consumer_hat + delta_t * reaccion_promedio_hat
-        ) * implicit_diffusion_factor
-
-        # Guardar estrictamente en la fila correspondiente de la matriz
-        consumer_dist[n, :] = np.real(np.fft.ifft(final_consumer_hat))
-        consumer_dist[n, :] = np.clip(consumer_dist[n, :], 0.0, None)
-
-        # 4. Actualización definitiva del recurso estacionario en la matriz
-        weighted_final_consumer = weights_x * consumer_growth_rate * consumer_dist[n, :]
-        final_resource_integral = kernel.T @ weighted_final_consumer
-        resource_dist[n, :] = resource_supply_rate / (
-            resource_decay + final_resource_integral
+        # Corrector IMEX-Heun
+        consumer_dist[k, :] = spectral_corrector(
+            prev_consumer, pred_consumer, g_prev, g_pred, dt, scheme
+        )
+        resource_dist[k, :] = compute_stationary_resource(
+            consumer_dist[k, :], weights_x, coeffs
         )
 
-    return consumer_dist, resource_dist
+    consumer_quantity = compute_consumer_integral(
+        consumer_dist, np.ones_like(x, dtype=dtype), weights_x
+    )
+
+    return consumer_dist, consumer_quantity, resource_dist
+
+
+def spectral_predictor(
+    prev_consumer: np.ndarray,
+    growth: np.ndarray,
+    delta_t: float,
+    scheme: SpectralScheme,
+) -> np.ndarray:
+    """
+    Realiza el paso predictor IMEX-Euler
+
+        n* = (I - ΔtD)^(-1) [nᵏ + Δt gᵏ nᵏ].
+
+    """
+
+    reaction = growth * prev_consumer
+
+    consumer_hat = np.fft.fft(prev_consumer)
+    reaction_hat = np.fft.fft(reaction)
+
+    predicted_hat = (
+        consumer_hat + delta_t * reaction_hat
+    ) * scheme.implicit_diffusion_factor
+
+    predicted = np.real(np.fft.ifft(predicted_hat))
+
+    return np.clip(predicted, 0.0, None)
+
+
+def spectral_corrector(
+    prev_consumer: np.ndarray,
+    predicted_consumer: np.ndarray,
+    growth_prev: np.ndarray,
+    growth_pred: np.ndarray,
+    delta_t: float,
+    scheme: SpectralScheme,
+) -> np.ndarray:
+    """
+    Realiza el paso corrector IMEX-Heun
+
+        nᵏ⁺¹ = (I - ΔtD)^(-1) [nᵏ + Δt/2(Fᵏ + F*)].
+
+    """
+
+    reaction_prev = growth_prev * prev_consumer
+    reaction_pred = growth_pred * predicted_consumer
+
+    consumer_hat = np.fft.fft(prev_consumer)
+
+    reaction_avg_hat = 0.5 * (np.fft.fft(reaction_prev) + np.fft.fft(reaction_pred))
+
+    final_hat = (
+        consumer_hat + delta_t * reaction_avg_hat
+    ) * scheme.implicit_diffusion_factor
+
+    final_consumer = np.real(np.fft.ifft(final_hat))
+
+    return np.clip(final_consumer, 0.0, None)

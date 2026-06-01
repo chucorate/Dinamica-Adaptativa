@@ -247,23 +247,20 @@ class Model:
         use_stationary_resource: bool = True,
     ) -> None:
         """Resuelve numéricamente el sistema mediante el método espectral."""
+        assert T > 0
+        assert isinstance(n_t, int) and n_t > 0
+        assert isinstance(n_x, int) and n_x > 0
+        assert isinstance(n_y, int) and n_y > 0
+        assert isinstance(use_stationary_resource, bool)
+
         self.T = T
+        self.n_t = n_t
+        self.n_x = n_x
+        self.n_y = n_y
 
         # Invocación al submódulo que acabamos de escribir
-        self.consumer_distribution, self.resource_distribution = (
-            solve_model_by_spectral(self, T, n_t, n_x, n_y, use_stationary_resource)
-        )
-
-        # Calcular los pesos para la cantidad global acumulada al final de forma limpia
-        from src.funciones_generales import get_simpson_weights
-
-        xmin, xmax = self.consumer_domain[0]
-        hx = (xmax - xmin) / (n_x - 1)
-        weights_x = get_simpson_weights(n_x, hx)
-
-        # Reutilizamos tu función de integración vectorizada
-        from src.metodos.diferencias_finitas import compute_consumer_integral
-
-        self.consumer_quantity = compute_consumer_integral(
-            self.consumer_distribution, np.ones_like(weights_x), weights_x
-        )
+        (
+            self.consumer_distribution,
+            self.consumer_quantity,
+            self.resource_distribution,
+        ) = solve_model_by_spectral(self, use_stationary_resource)

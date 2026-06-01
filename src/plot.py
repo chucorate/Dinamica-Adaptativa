@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animate
 
 from src.funciones_generales import (
     consumer_grid,
