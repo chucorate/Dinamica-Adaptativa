@@ -158,6 +158,7 @@ class Model:
         n_x: int,
         n_y: int,
         border_type: Literal["neumann", "periodic"],
+        theta: float,
         use_stationary_resource: bool,
     ) -> None:
         """
@@ -198,25 +199,42 @@ class Model:
                 imponiendo periodicidad en la variable
                 de rasgo.
         """
+        self.T = T
+
         (
             self.consumer_distribution,
             self.consumer_quantity,
             self.resource_distribution,
         ) = solve_model_by_finite_differences(
-            self, T, n_t, n_x, n_y, border_type, use_stationary_resource
+            self, T, n_t, n_x, n_y, border_type, use_stationary_resource, theta
         )
 
     def solve_by_spectral(
         self,
-        *args,
-        **kwargs,
+        T: float,
+        n_t: int,
+        n_x: int,
+        n_y: int,
+        use_stationary_resource: bool = True,
     ) -> None:
-        """
-        Resuelve numéricamente el sistema de EDPs de
-        mutación-selección mediante método espectral.
-        """
-        self.consumer_distribution, self.resource_distribution = (
-            solve_model_by_spectral(self, *args, **kwargs)
+        """Resuelve numéricamente el sistema mediante el método espectral."""
+        self.T = T
+        
+        # Invocación al submódulo que acabamos de escribir
+        self.consumer_distribution, self.resource_distribution = solve_model_by_spectral(
+            self, T, n_t, n_x, n_y, use_stationary_resource
+        )
+        
+        # Calcular los pesos para la cantidad global acumulada al final de forma limpia
+        from src.metodos.espectral import _get_simpson_weights
+        xmin, xmax = self.consumer_domain[0]
+        hx = (xmax - xmin) / (n_x - 1)
+        weights_x = _get_simpson_weights(n_x, hx)
+        
+        # Reutilizamos tu función de integración vectorizada
+        from src.metodos.diferencias_finitas import compute_consumer_integral
+        self.consumer_quantity = compute_consumer_integral(
+            self.consumer_distribution, np.ones_like(weights_x), weights_x
         )
 
 
