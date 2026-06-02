@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, cast, Literal
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.sparse import diags, csc_matrix, lil_matrix, eye
+from scipy.sparse import diags, eye, csc_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
 
 from src.funciones_generales import (
@@ -167,13 +167,13 @@ def solve_model_by_finite_differences(
         prev_consumer = consumer_dist[k - 1, :]
         prev_resource = resource_dist[k - 1, :]
 
-        consumer_dist[k, :] = advance_consumer(
+        consumer_dist[k, :] = _advance_consumer(
             prev_consumer, prev_resource, dt, weights_y, coeffs, scheme
         )
         resource_dist[k, :] = (
             compute_stationary_resource(consumer_dist[k, :], weights_x, coeffs)
             if use_stationary_resource
-            else advance_resource_explicit(
+            else _advance_resource_explicit(
                 prev_resource, consumer_dist[k, :], dt, weights_x, coeffs
             )
         )
@@ -186,7 +186,7 @@ def solve_model_by_finite_differences(
     return consumer_dist, consumer_quantity, resource_dist
 
 
-def advance_consumer(
+def _advance_consumer(
     prev_consumer: np.ndarray,
     prev_resource: np.ndarray,
     delta_t: float,
@@ -197,13 +197,13 @@ def advance_consumer(
     """
     Resuelve un paso temporal de la ecuación del consumidor
 
-        ∂ₜn = μΔn + g(x,R)n
+        ∂ₜn = εΔn + g(x,R)n
 
     mediante un esquema θ:
 
         (I + θΔtL - ΔtGⁿ)nᵏ⁺¹ = (I - (1-θ)ΔtL)nᵏ.
 
-    Aquí, L ≈ -μΔ es el operador de mutación discretizado y
+    Aquí, L ≈ -εΔ es el operador de mutación discretizado y
     Gⁿ = diag(gⁿ), donde
 
         gⁿ(x)  = r(x) ∫ K(x,y)Rⁿ(y) dy - m₁(x).
@@ -227,7 +227,7 @@ def advance_consumer(
     return cast(np.ndarray, spsolve(A, rhs))
 
 
-def advance_resource_explicit(
+def _advance_resource_explicit(
     prev_resource: np.ndarray,
     consumer_distribution: np.ndarray,
     delta_t: float,
