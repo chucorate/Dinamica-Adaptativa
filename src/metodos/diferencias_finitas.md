@@ -110,7 +110,7 @@ $$g(x,R)=r(x)\int K(x,y)R(y)\,dy-m_1(x).$$
 
 Definimos además la matriz diagonal
 
-$$G^k=\operatorname{diag}(g(x_0, R^k),\dots,g(x_{N_x-1},R^k)).$$
+$$G^k=\mathrm{diag}(g(x_0, R^k),\dots,g(x_{N_x-1},R^k)).$$
 
 ### Actualización del consumidor
 
