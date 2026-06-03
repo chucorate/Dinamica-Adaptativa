@@ -23,6 +23,6 @@ Esto va a crear el entorno virtual `dinamica-adaptativa`, el cuál debe utilizar
 # Consideraciones
 
 - [x] Simular para el caso gaussiano.
-- [ ] Simular canibalismo
-- [ ] Encontrar CFL
-- [ ] Estudiar oscilaciones y sus posibles orígenes
+- [ ] Simular canibalismo.
+- [ ] Encontrar CFL.
+- [ ] Estudiar oscilaciones y sus posibles orígenes.
