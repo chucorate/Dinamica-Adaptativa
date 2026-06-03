@@ -23,16 +23,15 @@ class Plot:
 
     def solution_over_time(
         self,
-        solution: Literal["consumer-density", "consumer-quantity", "resource"],
+        plot_type: Literal["heatmap", "contour"] = "heatmap",
         **kwargs,
     ) -> None:
-        plot_solution(self.model, solution, **kwargs)
+        plot_solution(self.model, plot_type, **kwargs)
 
-    def kernel(
-        self,
-        form: Literal["heat", "3D"],
-        **kwargs,
-    ) -> None:
+    def consumer_quantity(self, **kwargs) -> None:
+        plot_consumer_quantity(self.model, **kwargs)
+
+    def kernel(self, form: Literal["heat", "3D"], **kwargs) -> None:
         plot_kernel(self.model, form, **kwargs)
 
     def unidimensional_function(
@@ -45,96 +44,58 @@ class Plot:
 
 def plot_solution(
     model: "Model",
-    solution: Literal["consumer-density", "consumer-quantity", "resource"],
-    plot_type: Literal["heatmap", "contour", "surface"] = "heatmap",
+    plot_type: Literal["heatmap", "contour"],
     **kwargs,
 ) -> None:
-    # solucion de la forma u(t,y)
-    # en eje x va el rasgo, en eje y va el tiempo (de abajo hacia arriba)
-    """
-    Parameters
-    ----------
-    solution :
-        - consumer-density
-        - consumer-quantity
-        - resource
-
-    plot_type :
-        - heatmap
-        - contour
-        - surface
-
-    kwargs :
-        Se pasan directamente al backend
-        de matplotlib correspondiente.
-    """
-
     t, _ = time_grid(model)
 
-    # POBLACIÓN TOTAL
-    if solution == "consumer-quantity":
-        plt.plot(t, model.consumer_quantity, **kwargs)
-        plt.xlabel("Time")
-        plt.ylabel("Consumer quantity")
+    consumer = (
+        consumer_grid(model)[0],
+        model.consumer_distribution,
+        "Consumer trait",
+        "Consumer density",
+    )
+    resource = (
+        resource_grid(model)[0],
+        model.resource_distribution,
+        "Resource trait",
+        "Resource density",
+    )
+    datasets = (consumer, resource)
 
-        plt.show()
-        return
+    fig, axes = plt.subplots(2, 1, figsize=(8, 8))
 
-    # CONSUMIDORES
-    if solution == "consumer-density":
-        x, _ = consumer_grid(model)
-        Z = model.consumer_distribution
-        xlabel = "Consumer trait"
-
-    # RECURSOS
-    elif solution == "resource":
-        x, _ = resource_grid(model)
-        Z = model.resource_distribution
-        xlabel = "Resource trait"
-
-    else:
-        raise ValueError(f"Unknown solution '{solution}'")
-
-    X, T = np.meshgrid(x, t)
-
-    # Seleccionar tipo de gráfico
-
-    # HEATMAP
-    if plot_type == "heatmap":
-        default_kwargs = dict(
-            aspect="auto",
-            origin="lower",
-            extent=[x.min(), x.max(), t.min(), t.max()],
-        )
-
-        default_kwargs.update(kwargs)
-
-        plt.imshow(Z, **default_kwargs)
-        plt.xlabel(xlabel)
-        plt.ylabel("Time")
-        plt.colorbar()
-
-    # CONTOUR
-    elif plot_type == "contour":
-        plt.contourf(X, T, Z, **kwargs)
-        plt.xlabel(xlabel)
-        plt.ylabel("Time")
-        plt.colorbar()
-
-    # SURFACE
-    elif plot_type == "surface":
-        fig = plt.figure()
-
-        ax = fig.add_subplot(111, projection="3d")
-        ax.plot_surface(X, T, Z, **kwargs)
+    for ax, (x, Z, xlabel, title) in zip(axes, datasets):
+        if plot_type == "heatmap":
+            artist = ax.imshow(
+                Z,
+                aspect="auto",
+                origin="lower",
+                extent=[x.min(), x.max(), t.min(), t.max()],
+                **kwargs,
+            )
+        else:
+            X, T = np.meshgrid(x, t)
+            artist = ax.contourf(X, T, Z, **kwargs)
 
         ax.set_xlabel(xlabel)
         ax.set_ylabel("Time")
-        ax.set_zlabel("Density")
 
-    else:
-        raise ValueError(f"Unknown plot_type '{plot_type}'")
+        fig.colorbar(artist, ax=ax)
+        ax.set_title(title)
 
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_consumer_quantity(model: "Model", **kwargs) -> None:
+    t, _ = time_grid(model)
+
+    plt.plot(t, model.consumer_quantity, **kwargs)
+    plt.xlabel("Time")
+    plt.ylabel("Consumer quantity")
+    plt.ylim(bottom=0.0)
+    plt.grid(True)
     plt.show()
 
 
