@@ -238,6 +238,7 @@ class Model:
             self, border_type, use_stationary_resource, theta
         )
 
+    # WIP
     def solve_by_spectral(
         self,
         T: float,

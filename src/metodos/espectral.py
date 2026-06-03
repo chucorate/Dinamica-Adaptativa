@@ -1,3 +1,6 @@
+# WIP, no funciona del todo bien
+
+
 from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
