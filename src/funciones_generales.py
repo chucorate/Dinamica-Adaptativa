@@ -22,7 +22,13 @@ class ModelCoefficients:
     Attributes
     ----------
     kernel : np.ndarray
-        Matriz de interacción K(x_i, y_j) entre consumidores y recursos.
+        Matriz de interacción discreta de forma
+
+            (N_consumer, N_resource),
+
+        donde
+
+            kernel[i,j] = K(x_i, y_j).
 
     consumer_growth_rate : np.ndarray
         Tasa de crecimiento r(x_i) de cada rasgo de consumidor.
@@ -49,10 +55,19 @@ def build_model_coefficients(
     x: np.ndarray,
     y: np.ndarray,
 ) -> ModelCoefficients:
-    """Evalúa y almacena todos los coeficientes funcionales del modelo."""
+    """
+    Evalúa y almacena todos los coeficientes funcionales del modelo.
+
+    Se asumen vectores de la forma
+
+        x.shape == (N_consumer, d_x)
+        y.shape == (N_resource, d_y)
+
+    En particular, el kernel debe retornar (N_consumer, N_resource).
+    """
 
     return ModelCoefficients(
-        kernel=model.resource_consumer_kernel(x[:, None], y[None, :]).astype(dtype),
+        kernel=model.resource_consumer_kernel(x, y).astype(dtype),
         consumer_growth_rate=model.consumer_growth_rate(x).astype(dtype),
         consumer_decay=model.consumer_decay(x).astype(dtype),
         resource_supply_rate=model.resource_supply_rate(y).astype(dtype),
@@ -60,26 +75,134 @@ def build_model_coefficients(
     )
 
 
-def consumer_grid(model: "Model") -> tuple[np.ndarray, float]:
+@dataclass(frozen=True)
+class TraitGrid:
     """
-    Construye la malla uniforme del espacio de rasgos
-    de los consumidores y devuelve también su paso espacial.
+    Representa una malla cartesiana uniforme asociada a un espacio
+    de rasgos potencialmente multidimensional.
+
+    Esta estructura agrupa tanto la geometría de la malla como la
+    información necesaria para reconstruir arreglos definidos sobre
+    ella, evitando pasar múltiples objetos relacionados por separado.
+
+    Attributes
+    ----------
+    points : np.ndarray
+        Coordenadas de los puntos de la malla.
+
+        Tiene forma
+
+            (N_total, d),
+
+        donde d es la dimensión del espacio de rasgos y N_total es el
+        número total de puntos de la discretización.
+
+        Cada fila contiene las coordenadas de un punto de la malla:
+
+            points[k] = [x₁, x₂, ..., x_d].
+
+    spacing : np.ndarray
+        Vector de forma (d,) que contiene el paso espacial utilizado
+        en cada dimensión de la malla.
+
+    shape : tuple[int, ...]
+        Forma multidimensional original de la malla antes de ser
+        aplanada.
+
+        Permite reconstruir arreglos definidos sobre la malla mediante
+        operaciones como
+
+            u.reshape(shape).
+
+        Por ejemplo:
+
+            d = 1  -> shape = (Nx,)
+            d = 2  -> shape = (Nx, Ny)
+            d = 3  -> shape = (Nx, Ny, Nz)
     """
-    xmin, xmax = model.consumer_domain[0]
-    x = np.linspace(xmin, xmax, model.n_x, dtype=dtype)
-    hx = cast(float, x[1] - x[0])
-    return x, hx
+
+    points: np.ndarray
+    spacing: np.ndarray
+    shape: tuple[int, ...]
+
+    @property
+    def simpson_weights(self) -> np.ndarray:
+        return get_simpson_weights(
+            self.shape,
+            self.spacing,
+        )
 
 
-def resource_grid(model: "Model") -> tuple[np.ndarray, float]:
+def _build_trait_grid(
+    domain: np.ndarray,
+    resolution: tuple[int, ...],
+) -> TraitGrid:
     """
-    Construye la malla uniforme del espacio de rasgos
-    de los recursos y devuelve también su paso espacial.
+    Construye una malla cartesiana uniforme sobre un dominio
+    multidimensional.
     """
-    ymin, ymax = model.resource_domain[0]
-    y = np.linspace(ymin, ymax, model.n_y, dtype=dtype)
-    hy = cast(float, y[1] - y[0])
-    return y, hy
+
+    for N in resolution:
+        assert N > 1 and isinstance(N, int)
+
+    if len(domain) != len(resolution):
+        raise ValueError("La dimensión del dominio y la resolución no coinciden.")
+
+    axes = [np.linspace(a, b, N, dtype=dtype) for (a, b), N in zip(domain, resolution)]
+
+    spacing = np.array([axis[1] - axis[0] for axis in axes], dtype=dtype)
+
+    mesh = np.meshgrid(*axes, indexing="ij")
+
+    shape = mesh[0].shape
+
+    points = np.column_stack([m.ravel() for m in mesh])
+
+    return TraitGrid(points=points, spacing=spacing, shape=shape)
+
+
+def consumer_grid(model: "Model") -> TraitGrid:
+    """
+    Construye una malla cartesiana uniforme del espacio de rasgos
+    de los consumidores.
+
+    Si el espacio de rasgos tiene dimensión d_x y cada eje se
+    discretiza con model.n_x puntos, la malla resultante contiene
+
+        N_total = model.n_x ** d_x
+
+    puntos.
+
+    Returns
+    -------
+    grid : TraitGrid
+        Grilla asociada al espacio multidimensional
+        de los rasgos de consumidores.
+    """
+
+    return _build_trait_grid(model.consumer_domain, model.n_x)
+
+
+def resource_grid(model: "Model") -> TraitGrid:
+    """
+    Construye una malla cartesiana uniforme del espacio de rasgos
+    de los recursos.
+
+    Si el espacio de rasgos tiene dimensión d_y y cada eje se
+    discretiza con model.n_y puntos, la malla resultante contiene
+
+        N_total = model.n_y ** d_y
+
+    puntos.
+
+    Returns
+    -------
+    grid : TraitGrid
+        Grilla asociada al espacio multidimensional
+        de los rasgos de recursos.
+    """
+
+    return _build_trait_grid(model.resource_domain, model.n_y)
 
 
 def time_grid(model: "Model") -> tuple[np.ndarray, float]:
@@ -92,9 +215,9 @@ def time_grid(model: "Model") -> tuple[np.ndarray, float]:
     return t, delta_t
 
 
-def get_simpson_weights(N: int, h: float) -> np.ndarray:
+def _get_simpson_weights_1d(N: int, h: float) -> np.ndarray:
     """
-    Genera un vector de pesos de Simpson de tamaño N.
+    Genera un vector de pesos unidimensional de Simpson de tamaño N.
 
     Requiere N impar.
     """
@@ -108,6 +231,43 @@ def get_simpson_weights(N: int, h: float) -> np.ndarray:
     return (h / 3.0) * weights
 
 
+def get_simpson_weights(
+    shape: tuple[int, ...],
+    spacing: np.ndarray,
+) -> np.ndarray:
+    """
+    Construye los pesos de Simpson asociados a una malla
+    cartesiana multidimensional.
+
+    Parameters
+    ----------
+    shape : tuple[int, ...]
+        Forma de la malla.
+
+    spacing : np.ndarray
+        Paso espacial de cada dimensión.
+
+    Returns
+    -------
+    np.ndarray
+        Vector de forma
+
+            (N_total,)
+
+        compatible con TraitGrid.points.
+    """
+
+    weights = _get_simpson_weights_1d(shape[0], float(spacing[0]))
+
+    for N, h in zip(shape[1:], spacing[1:]):
+        weights = np.multiply.outer(
+            weights,
+            _get_simpson_weights_1d(N, float(h)),
+        )
+
+    return weights.ravel()
+
+
 def compute_consumer_integral(
     kernel: np.ndarray,
     resource_distribution: np.ndarray,
@@ -118,7 +278,29 @@ def compute_consumer_integral(
 
         I(x_i) = ∫ K(x_i,y) R(y) dy
 
-    mediante cuadratura numérica.
+    sobre una malla multidimensional utilizando
+    cuadratura de Simpson tensorial.
+
+    Parameters
+    ----------
+    kernel : np.ndarray
+        Matriz de interacción de forma
+
+            (N_consumer, N_resource).
+
+    resource_distribution : np.ndarray
+        Distribución discreta del recurso de forma
+
+            (N_resource,).
+
+    weights : np.ndarray
+        Pesos de Simpson asociados a la malla de recursos.
+
+    Returns
+    -------
+    np.ndarray
+        Aproximación de I evaluada en todos los
+        puntos de la malla de consumidores.
     """
     weighted_resource = weights * resource_distribution
     return kernel @ weighted_resource
@@ -133,9 +315,34 @@ def compute_resource_integral(
     """
     Evalúa
 
-        J(y_j) = ∫ r(x) K(x,y_j) n(x) dx
+        J(y_j) = ∫ r(x)K(x,y_j)n(x) dx
 
-    mediante cuadratura numérica.
+    sobre una malla multidimensional utilizando
+    cuadratura de Simpson tensorial.
+
+    Parameters
+    ----------
+    kernel : np.ndarray
+        Matriz de interacción de forma
+
+            (N_consumer, N_resource).
+
+    growth_rate : np.ndarray
+        Valores de r(x) evaluados en la malla
+        de consumidores.
+
+    consumer_distribution : np.ndarray
+        Distribución discreta de consumidores.
+
+    weights : np.ndarray
+        Pesos de Simpson asociados a la malla
+        de consumidores.
+
+    Returns
+    -------
+    np.ndarray
+        Aproximación de J evaluada en todos los
+        puntos de la malla de recursos.
     """
     weighted_consumer = weights * growth_rate * consumer_distribution
     return kernel.T @ weighted_consumer
