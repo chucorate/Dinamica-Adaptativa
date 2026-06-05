@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, cast
+from functools import cached_property
 from dataclasses import dataclass
 
 import numpy as np
@@ -126,11 +127,16 @@ class TraitGrid:
     shape: tuple[int, ...]
 
     @property
+    def size(self) -> int:
+        return self.points.shape[0]
+
+    @property
+    def dimension(self) -> int:
+        return self.points.shape[1]
+
+    @cached_property
     def simpson_weights(self) -> np.ndarray:
-        return get_simpson_weights(
-            self.shape,
-            self.spacing,
-        )
+        return get_simpson_weights(self.shape, self.spacing)
 
 
 def _build_trait_grid(
