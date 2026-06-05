@@ -11,7 +11,7 @@ from typing import Callable, Literal
 
 import numpy as np
 
-from src.funciones_generales import TraitGrid
+from src.tools.grid import TraitGrid
 from src.metodos.diferencias_finitas import solve_model_by_finite_differences
 from src.plot import Plot
 
