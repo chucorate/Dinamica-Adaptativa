@@ -22,8 +22,8 @@ Alternativamente, es posible usar entornos globales como Anaconda/Miniconda, per
 - [ ] Probar métodos espectrales. ***[en progreso]***
 - [ ] Simular canibalismo.
 - [ ] Replicar los resultados del paper en el caso gaussiano. ***[en progreso]***
-- [ ] Ver qué pasa al cambiar condiciones en tiempos arbitrarios.
-- [ ] Resolver esquema general bidimensional. (propuesto)
+- [x] Resolver esquema general bidimensional.
+- [ ] Ver qué pasa al cambiar condiciones en tiempos arbitrarios. (propuesto)
 - [ ] Estudiar polimorficidad. (propuesto)
 
 

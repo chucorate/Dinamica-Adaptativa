@@ -9,11 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from IPython.display import HTML
-from matplotlib import rc
-from matplotlib import rcParams
 
-rc("animation", html="jshtml")
-rcParams["animation.embed_limit"] = 200
 if TYPE_CHECKING:
     from src.model import Model
 
