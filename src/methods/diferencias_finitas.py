@@ -137,20 +137,16 @@ def build_laplacian(
         sobre la malla.
     """
     axis_laplacians = [
-        _build_laplacian_1D(N, h, border_type)
-        for N, h in zip(grid.shape, grid.spacing)
+        _build_laplacian_1D(N, h, border_type) for N, h in zip(grid.shape, grid.spacing)
     ]
 
-    identities = [
-        eye(N, format="csc", dtype=dtype) for N in grid.shape
-    ]
+    identities = [eye(N, format="csc", dtype=dtype) for N in grid.shape]
 
     # Inicializamos construcción de la matriz del laplaciano
     size = int(np.prod(grid.shape))
     L_total = csc_matrix((size, size), dtype=dtype)
 
     for axis, L_axis in enumerate(axis_laplacians):
-
         term = eye(1, format="csc", dtype=dtype)
 
         for j in range(len(grid.shape)):

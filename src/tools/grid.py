@@ -155,7 +155,6 @@ def time_grid(model: "Model") -> tuple[np.ndarray, float]:
     return t, delta_t
 
 
-
 def _get_simpson_weights_1d(N: int, h: float) -> np.ndarray:
     """
     Genera un vector de pesos unidimensional de Simpson de tamaño N.
