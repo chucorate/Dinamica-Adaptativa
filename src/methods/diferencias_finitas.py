@@ -2,20 +2,22 @@ from typing import TYPE_CHECKING, cast, Literal
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.sparse import diags, eye, csc_matrix, lil_matrix
+from scipy.sparse import diags, eye, kron, csc_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
 
-from src.funciones_generales import (
-    dtype,
-    ModelCoefficients,
-    build_model_coefficients,
-    get_simpson_weights,
-    compute_consumer_integral,
-    compute_resource_integral,
-    compute_stationary_resource,
+from src.constants import dtype
+from src.tools.grid import (
+    TraitGrid,
     consumer_grid,
     resource_grid,
     time_grid,
+)
+from src.tools.model_components import (
+    ModelCoefficients,
+    build_model_coefficients,
+    compute_consumer_integral,
+    compute_resource_integral,
+    compute_stationary_resource,
 )
 
 if TYPE_CHECKING:
@@ -61,17 +63,17 @@ class ThetaScheme:
 
 def build_theta_scheme(
     model: "Model",
-    hx: float,
     delta_t: float,
     border_type: Literal["neumann", "periodic"],
     theta: float,
 ) -> ThetaScheme:
     """Construye las matrices asociadas al esquema theta."""
 
-    # L representa el término difusivo puro. Multiplicamos por la tasa de mutación.
-    L = model.mutation_rate * _get_laplacian_matrix(model.n_x, hx, border_type)
+    # L representa el término difusivo puro.
+    # Multiplicamos por la tasa de mutación
+    L = model.mutation_rate * build_laplacian(model.consumer_grid, border_type)
 
-    I_sparse = eye(model.n_x, format="csc", dtype=dtype)
+    I_sparse = eye(model.consumer_size, format="csc", dtype=dtype)
 
     B_theta = I_sparse - (1.0 - theta) * delta_t * L
 
@@ -83,18 +85,97 @@ def build_theta_scheme(
     )
 
 
-def _get_laplacian_matrix(
-    N_x: int,
-    dx: float,
+def build_laplacian(
+    grid: TraitGrid,
+    border_type: Literal["neumann", "periodic"],
+) -> csc_matrix:
+    """
+    Construye el laplaciano discreto multidimensional asociado
+    a una malla cartesiana uniforme.
+
+    Para cada dirección k se construye el operador unidimensional Δ_k
+    discretizado mediante diferencias finitas de segundo orden
+    sobre la malla correspondiente.
+
+    El laplaciano multidimensional se obtiene mediante productos
+    de Kronecker:
+
+        Δ_h =
+            Δ₁ ⊗ I₂ ⊗ ... ⊗ I_d
+          + I₁ ⊗ Δ₂ ⊗ ... ⊗ I_d
+          + ...
+          + I₁ ⊗ ... ⊗ I_{d-1} ⊗ Δ_d.
+
+    Esta representación es compatible con la vectorización de
+    arreglos multidimensionales mediante ``ravel()`` y permite
+    construir operadores en dimensión arbitraria reutilizando
+    únicamente los laplacianos unidimensionales.
+
+    Parameters
+    ----------
+    grid : TraitGrid
+        Malla de rasgos sobre la cual se discretiza el operador.
+
+    border_type : {"neumann", "periodic"}
+        Tipo de condición de borde utilizada en cada dirección.
+
+    Returns
+    -------
+    csc_matrix
+        Matriz dispersa de forma
+
+            (N_total, N_total),
+
+        donde
+
+            N_total = np.prod(grid.shape).
+
+        Representa el laplaciano discreto positivo
+
+            -Δ
+
+        sobre la malla.
+    """
+    axis_laplacians = [
+        _build_laplacian_1D(N, h, border_type)
+        for N, h in zip(grid.shape, grid.spacing)
+    ]
+
+    identities = [
+        eye(N, format="csc", dtype=dtype) for N in grid.shape
+    ]
+
+    # Inicializamos construcción de la matriz del laplaciano
+    size = int(np.prod(grid.shape))
+    L_total = csc_matrix((size, size), dtype=dtype)
+
+    for axis, L_axis in enumerate(axis_laplacians):
+
+        term = eye(1, format="csc", dtype=dtype)
+
+        for j in range(len(grid.shape)):
+            # Seleccionamos la matriz laplaciana 1D o una identidad, dependiendo de la coordenada
+            factor = L_axis if j == axis else identities[j]
+
+            term = kron(term, factor, format="csc")
+
+        L_total += term
+
+    return cast(csc_matrix, L_total)
+
+
+def _build_laplacian_1D(
+    N: int,
+    h: float,
     border_type: Literal["neumann", "periodic"],
 ) -> csc_matrix:
     """Genera la matriz del operador -D * d^2/dx^2 (Laplaciano negativo).
 
     No incluye delta_t ni la identidad, permitiendo flexibilidad para el esquema theta.
     """
-    inv_dx2 = 1.0 / (dx**2)
-    diag_central = 2.0 * inv_dx2 * np.ones(N_x)
-    diag_lateral = -1.0 * inv_dx2 * np.ones(N_x - 1)
+    inv_dx2 = 1.0 / (h**2)
+    diag_central = 2.0 * inv_dx2 * np.ones(N)
+    diag_lateral = -1.0 * inv_dx2 * np.ones(N - 1)
 
     L = cast(
         lil_matrix,
@@ -136,23 +217,30 @@ def solve_model_by_finite_differences(
     """
 
     # Discretización del dominio
-    x, hx = consumer_grid(model)
-    y, hy = resource_grid(model)
+    x_grid = consumer_grid(model)
+    y_grid = resource_grid(model)
+
+    model.consumer_grid = x_grid
+    model.resource_grid = y_grid
+
+    x = x_grid.points
+    y = y_grid.points
+
     _, dt = time_grid(model)
 
     # Obtenemos pesos de Simpson para las integrales
-    weights_x = get_simpson_weights(model.n_x, hx)
-    weights_y = get_simpson_weights(model.n_y, hy)
+    weights_x = x_grid.simpson_weights
+    weights_y = y_grid.simpson_weights
 
     # Precalculamos los operadores espaciales asociados a la mutación
-    scheme = build_theta_scheme(model, hx, dt, border_type, theta)
+    scheme = build_theta_scheme(model, dt, border_type, theta)
 
     # Precalculamos los parámetros funcionales del modelo
     coeffs = build_model_coefficients(model, x, y)
 
     # Inicialización de las soluciones
-    consumer_dist = np.zeros((model.n_t, model.n_x), dtype=dtype)
-    resource_dist = np.zeros((model.n_t, model.n_y), dtype=dtype)
+    consumer_dist = np.zeros((model.n_t, model.consumer_size), dtype=dtype)
+    resource_dist = np.zeros((model.n_t, model.resource_size), dtype=dtype)
 
     # Evaluamos las condiciones iniciales
     consumer_dist[0, :] = model.initial_consumer_distribution(x).astype(dtype)
@@ -179,9 +267,7 @@ def solve_model_by_finite_differences(
         )
 
     # Obtenemos cantidad de consumidores final
-    consumer_quantity = compute_consumer_integral(
-        consumer_dist, np.ones_like(x, dtype=dtype), weights_x
-    )
+    consumer_quantity = consumer_dist @ weights_x
 
     return consumer_dist, consumer_quantity, resource_dist
 
