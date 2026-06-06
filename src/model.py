@@ -12,7 +12,7 @@ from typing import Callable, Literal
 import numpy as np
 
 from src.tools.grid import TraitGrid
-from src.metodos.diferencias_finitas import solve_model_by_finite_differences
+from src.methods.diferencias_finitas import solve_model_by_finite_differences
 from src.plot import Plot
 
 # Type para funciones que toman arreglos de numpy y retornan arreglos de numpy
@@ -29,7 +29,10 @@ def _validate_trait_function(f: TraitFunction, dimension: int) -> None:
         raise TypeError("La función debe retornar un np.ndarray.")
 
     if out.shape != (5,):
-        raise ValueError(f"Los input y output de la función debe tener el mismo shape.")
+        raise ValueError(
+            f"Los input y output de la función debe tener el mismo shape.\n"
+            f"Test shape: {test.shape}, output shape: {out.shape}."
+        )
 
 
 def _validate_kernel_function(
@@ -175,6 +178,7 @@ class Model:
         # Atributos auxiliares
         self.n_x: tuple[int, ...]
         self.n_y: tuple[int, ...]
+        self.time_grid: np.ndarray
         self.consumer_grid: TraitGrid
         self.resource_grid: TraitGrid
 

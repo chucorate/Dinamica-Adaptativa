@@ -219,14 +219,12 @@ def solve_model_by_finite_differences(
     # Discretización del dominio
     x_grid = consumer_grid(model)
     y_grid = resource_grid(model)
+    model.time_grid, dt = time_grid(model)
 
     model.consumer_grid = x_grid
     model.resource_grid = y_grid
-
     x = x_grid.points
     y = y_grid.points
-
-    _, dt = time_grid(model)
 
     # Obtenemos pesos de Simpson para las integrales
     weights_x = x_grid.simpson_weights
