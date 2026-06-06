@@ -1,0 +1,5 @@
+# Ignorar notebooks para las estadísticas de lenguaje
+*.ipynb linguist-generated=true
+
+# Normalización LF
+* text=auto eol=lf
