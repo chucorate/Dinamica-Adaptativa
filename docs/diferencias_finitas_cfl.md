@@ -3,7 +3,7 @@
 ## Contexto
 
 Este documento estudia las condiciones de estabilidad temporal para el esquema $\theta$ descrito en la
-documentación del método de diferencias finita (ver [src/metodos/diferencias_finitas.md](src/metodos/diferencias_finitas.md)). A partir del sistema discreto ya construido, se
+documentación del método de diferencias finita (ver [docs/diferencias_finitas_algoritmo.md](docs/diferencias_finitas_algoritmo.md)). A partir del sistema discreto ya construido, se
 determinan las restricciones sobre el paso temporal $\Delta t$, es decir, las **condiciones CFL**, que
 garantizan que los errores numéricos no crezcan a lo largo de la integración. El análisis se apoya en
 la transformada de Fourier para derivar sistemáticamente el factor de
