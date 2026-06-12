@@ -92,9 +92,61 @@ def plot_consumer_quantity(model: "Model", **kwargs) -> None:
     plt.show()
 
 
-def plot_kernel(model: "Model", kernel_format: Literal["heat", "3D"], **kwargs) -> None:
-    # Grafico 3D o de calor, para plotear kernels
-    return
+def plot_kernel(model: "Model", format: Literal["heat", "3D"], **kwargs) -> None:
+    """
+    Grafica el kernel de interacción K(x, y) entre consumidores y recursos.
+    """
+    # 1. Obtenemos las mallas de los rasgos usando las funciones generales
+    x, _ = consumer_grid(model)
+    y, _ = resource_grid(model)
+
+    # 2. Creamos la grilla bidimensional
+    # Usamos indexing='ij' para que X tenga forma (n_x, n_y) e Y (n_x, n_y)
+    # Esto es consistente con cómo se evalúa el kernel en funciones_generales.py
+    X, Y = np.meshgrid(x, y, indexing="ij")
+
+    # 3. Evaluamos el kernel sobre toda la grilla
+    Z = model.resource_consumer_kernel(X, Y)
+
+    # 4. Generamos el gráfico según el formato elegido
+    if format == "heat":
+        # Parámetros por defecto para el mapa de calor
+        default_kwargs = dict(
+            aspect="auto",
+            origin="lower",
+            # extent asigna los límites de los ejes: [xmin_y, xmax_y, ymin_x, ymax_x]
+            # En imshow, el eje horizontal es el segundo eje de la matriz (y) y el vertical el primero (x)
+            extent=[y.min(), y.max(), x.min(), x.max()],
+            cmap="viridis"
+        )
+        default_kwargs.update(kwargs)
+
+        plt.imshow(Z, **default_kwargs)
+        plt.xlabel("Resource trait (y)")
+        plt.ylabel("Consumer trait (x)")
+        plt.title("Interaction Kernel K(x, y)")
+        plt.colorbar(label="Interaction strength")
+
+    elif format == "3D":
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+
+        default_kwargs = dict(cmap="viridis")
+        default_kwargs.update(kwargs)
+
+        surf = ax.plot_surface(X, Y, Z, **default_kwargs)
+        ax.set_xlabel("Consumer trait (x)")
+        ax.set_ylabel("Resource trait (y)")
+        ax.set_zlabel("Interaction K(x, y)")
+        plt.title("Interaction Kernel 3D")
+        
+        # Agregamos una barra de color ajustada al tamaño del gráfico
+        fig.colorbar(surf, ax=ax, shrink=0.5, aspect=5, label="Interaction strength")
+
+    else:
+        raise ValueError(f"Unknown format '{format}'")
+
+    plt.show()
 
 
 def plot_1D(
