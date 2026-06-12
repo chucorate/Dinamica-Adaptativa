@@ -7,6 +7,7 @@ Consideramos el sistema
 $$\partial_t n(t,x) = \varepsilon \Delta_x n(t,x) + \left(r(x)\int K(x,y)R(t,y)\,dy - m_1(x)\right) n(t,x),$$
 
 donde:
+- $x\in \mathbb{R}^{d_x},y\in \mathbb{R}^{d_y}$ y $d_x,d_y\in\mathbb{N}$.
 - $n(t,x)$ representa la densidad de consumidores con rasgo $x$.
 - $\varepsilon$ es la tasa de mutación.
 - $K(x,y)$ modela la interacción entre consumidores y recursos.
@@ -28,18 +29,41 @@ $$R(y) = \frac{R_{\mathrm{in}}(y)}{m_2(y)+\int r(x)K(x,y)n(x)\,dx}.$$
 
 ## Modelo Discreto
 
-### Discretización espacial
+### Discretización espacio-temporal
 
-Introduciendo las mallas uniformes
+El dominio del consumidor y del recurso respectivamente se denotarán como
 
-$$\begin{align*}
-x_i &= x_{\min}+ih_x,\qquad i=0,\dots,N_x-1, \\
-y_j &= y_{\min}+jh_y,\qquad j=0,\dots,N_y-1,
-\end{align*}$$
+$$\Omega_x = [a_1,b_1]\times\cdots\times[a_{d_x},b_{d_x}],\quad \Omega_y = [c_1,d_1]\times\cdots\times[c_{d_y},d_{d_y}].$$
 
-la solución discreta se denota por
+Para cada componente $\ell$, se construye una malla uniforme $x^{(\ell)}$ que contiene los puntos
 
-$$n_i^k \approx n(t_k,x_i),\qquad R_j^k \approx R(t_k,y_j).$$
+$$x^{(\ell)}_{i_\ell} = a_\ell+\frac{i_\ell}{N_\ell - 1} (b_\ell - a_\ell), \qquad i_\ell=0,\dots,N_\ell-1,$$
+
+que discretiza el intervalo $[a_\ell, b_\ell]$ en $N_\ell$ puntos. Análogamente para el recurso,
+
+$$y^{(\ell)}_{j_\ell} = c_\ell+\frac{j_\ell}{M_\ell - 1} (d_\ell - c_\ell), \qquad j_\ell=0,\dots,M_\ell-1$$
+
+discretiza el intervalo $[c_\ell, d_\ell]$ en $M_\ell$ puntos. Con esto, las grillas de los espacios de rasgos de consumidor y recursos son respectivamente 
+
+$$\mathcal X = x^{(1)}\times\cdots\times x^{(d_x)},\quad \mathcal{Y} = y^{(1)}\times\cdots\times y^{(d_y)},$$
+
+las cuales tienen un total de puntos $N,M$ dados por
+
+$$N=\prod_{\ell=1}^{d_x} N_\ell,\qquad M=\prod_{\ell=1}^{d_y} M_\ell.$$
+
+Por otro lado, para discretizar el tiempo consideramos un tiempo máximo $T$ y un $N_T\in \mathbb{N}$. Con esto, el tiempo se discretiza mediante los puntos
+
+$$t_k = \frac{k}{N_T-1}T,\qquad k=0,\dots,N_T-1.$$
+
+Así, las soluciones discretas vienen dadas por
+
+$$n_i^k \approx n(t_k,x_i), \qquad R_j^k \approx R(t_k,y_j),$$
+
+donde cada punto de la grilla del consumidor y del recurso se identifican mediante los multiíndices
+
+$$i=(i_1,\dots,i_{d_x}),\qquad j=(j_1,\dots,j_{d_y}).$$
+
+En la implementación, ambos multiíndices se linealizan para almacenar las soluciones como matrices de dimensión $(N, d_x)$ y $(M, d_y)$ respectivamente, donde cada fila corresponde a un punto de los espacios de rasgos. En consecuencia, las soluciones discretas se almacenan como matrices de dimensión $(N_T,N)$ y $(N_T,M)$, cuyas filas representas los distintos instantes de tiempo.
 
 ### Aproximación de las integrales
 
@@ -54,7 +78,9 @@ I_i^{k} &\approx \sum_{j=0}^{N_y-1} w_j^{(y)} K(x_i,y_j) R_j^{k}, \\
 J_j^{k} &\approx\sum_{i=0}^{N_x-1}w_i^{(x)}r(x_i)K(x_i,y_j)n_i^{k},
 \end{align*}$$
 
-donde $w^{(x)}$ y $w^{(y)}$ denotan los vectores ponderación de cada término según la regla de Simpson. En forma matricial, lo anterior es equivalente a calcular
+donde $w^{(x)}$ y $w^{(y)}$ denotan los vectores ponderación de cada término según la regla de Simpson. En el caso multidimensional, dichos pesos se obtienen mediante el producto tensorial de los pesos unidimensionales de cada coordenada.
+
+En forma matricial, lo anterior es equivalente a calcular
 
 $$I^{k}=K\cdot (w^{(y)} \odot R^{k}), \qquad J^{k}=K^T\cdot\left(w^{(x)}\odot r\odot n^{k}\right),$$
 
@@ -62,11 +88,17 @@ donde $K=(K(x_{i},y_{j}))_{i,j}$, $r=(r(x_{i}))_{i}$, $R^{k}=(R_{j}^{k})_{j}$ y 
 
 ### Discretización del operador de mutación
 
-La difusión se aproxima mediante diferencias finitas centradas. Para un punto interior, consideramos 
+La difusión se aproxima mediante diferencias finitas centradas. En el caso unidimensional, para un punto interior consideramos 
 
 $$\Delta_h n(x_i):=\frac{n_{i-1}-2n_i+n_{i+1}}{h_x^2}.$$
 
-Esto genera una matriz tridiagonal $\Delta_h$ tal que $\Delta_h n\approx\Delta_x n$. En la implementación se define el operador
+Esto genera una matriz tridiagonal $\Delta_h$ tal que $\Delta_h n\approx\Delta_x n$. Para el caso multidimensional, el laplaciano discreto se construye mediante productos de Kronecker:
+
+$$\Delta_h=\sum_{\ell=1}^{d_x}I_{N_1}\otimes\cdots\otimes I_{N_{\ell-1}}\otimes\Delta_h^{(\ell)}\otimes I_{N_{\ell+1}}\otimes\cdots\otimes I_{N_{d_x}},$$
+
+donde $I_{N_\ell}$ denota la matriz identidad de dimensión $N_\ell$, y $\Delta_h^{(\ell)}$ es el laplaciano unidimensional asociado a la componente $\ell$.
+
+En la implementación se define el operador
 
 $$L:=-\varepsilon \Delta_h,$$
 
@@ -74,27 +106,28 @@ de modo que $L n \approx -\varepsilon\Delta_x n.$ El signo negativo se introduce
 
 ### Condiciones de borde 
 
-El problema continuo se define para todo $x,y\in \mathbb{R}$, por lo que en estricto rigor no presenta condiciones de borde. Aún así, para poder simular la ecuación en una malla regular, se imponen las siguientes condiciones de borde posibles:
+El problema continuo se define para todo $x\in\mathbb{R}^{d_x}$, por lo que en estricto rigor no presenta condiciones de borde. Aún así, para poder simular la ecuación en una malla regular, se imponen las siguientes condiciones de borde posibles:
 
 **1. Neumann**<br>
 La condición
 
 $$\frac{\partial n}{\partial x}=0$$
 
-se implementa mediante puntos fantasma reflejados:
+se implementa mediante puntos fantasma reflejados coordenada a coordenada:
 
-$$n_{-1}=n_1,\qquad n_{N_x}=n_{N_x-2}.$$
-
-Esto modifica únicamente la primera y última fila de la matriz $L$.
+$$n_{-1}=n_1,\qquad n_{N_\ell}=n_{N_\ell-2}.$$
+Esto modifica únicamente la primera y última fila del laplaciano discreto unidimensional $\Delta_h^{(\ell)}$ asociado a la coordenada $\ell$. El operador multidimensional se obtiene posteriormente mediante productos de Kronecker.
 
 **2. Periódicas**<br>
 La condición
 
-$$n(x_{\min})=n(x_{\max})$$
+$$n(a_{\ell})=n(b_{\ell})$$
 
-se implementa conectando el primer y último nodo:
+se implementa identificando el primer y el último nodo de cada coordenada. En consecuencia, el laplaciano unidimensional $\Delta_h^{(\ell)}$ incorpora las conexiones entre ambos extremos del intervalo mediante entradas no nulas en las esquinas de su matriz:
 
-$$L_{0,N_x-1}\neq 0, \qquad L_{N_x-1,0}\neq 0.$$
+$$(\Delta_h^{(\ell)})_{0,N_\ell-1}\neq 0, \qquad (\Delta_h^{(\ell)})_{N_\ell-1,0}\neq 0.$$
+
+El operador multidimensional $\Delta_h$ hereda estas conexiones a través de su construcción mediante productos de Kronecker.
 
 > Nota: Aún cuando se imponen condiciones de borde, es más conveniente simular el problema sobre un dominio suficientemente grande de manera que el borde afecte lo menos posible la solución en el interior.
 
@@ -106,11 +139,11 @@ $$\partial_t n=\varepsilon\Delta_x n+g(x,R)n,$$
 
 donde
 
-$$g(x,R)=r(x)\int K(x,y)R(y)\,dy-m_1(x).$$
+$$g(x,R)=r(x)\int_{\Omega_y} K(x,y)R(y)\,dy-m_1(x).$$
 
 Definimos además la matriz diagonal
 
-$$G^k=\mathrm{diag}(g(x_0, R^k),\dots,g(x_{N_x-1},R^k)).$$
+$$G^k=\mathrm{diag}(g(x_0, R^k),\dots,g(x_{N-1},R^k)).$$
 
 ### Actualización del consumidor
 

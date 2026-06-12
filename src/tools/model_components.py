@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
 import numpy as np
 
-dtype = np.float64
+from src.constants import dtype
 
 if TYPE_CHECKING:
     from src.model import Model
@@ -22,7 +22,13 @@ class ModelCoefficients:
     Attributes
     ----------
     kernel : np.ndarray
-        Matriz de interacción K(x_i, y_j) entre consumidores y recursos.
+        Matriz de interacción discreta de forma
+
+            (N_consumer, N_resource),
+
+        donde
+
+            kernel[i,j] = K(x_i, y_j).
 
     consumer_growth_rate : np.ndarray
         Tasa de crecimiento r(x_i) de cada rasgo de consumidor.
@@ -49,63 +55,24 @@ def build_model_coefficients(
     x: np.ndarray,
     y: np.ndarray,
 ) -> ModelCoefficients:
-    """Evalúa y almacena todos los coeficientes funcionales del modelo."""
+    """
+    Evalúa y almacena todos los coeficientes funcionales del modelo.
+
+    Se asumen vectores de la forma
+
+        x.shape == (N_consumer, d_x)
+        y.shape == (N_resource, d_y)
+
+    En particular, el kernel debe retornar (N_consumer, N_resource).
+    """
 
     return ModelCoefficients(
-        kernel=model.resource_consumer_kernel(x[:, None], y[None, :]).astype(dtype),
+        kernel=model.resource_consumer_kernel(x, y).astype(dtype),
         consumer_growth_rate=model.consumer_growth_rate(x).astype(dtype),
         consumer_decay=model.consumer_decay(x).astype(dtype),
         resource_supply_rate=model.resource_supply_rate(y).astype(dtype),
         resource_decay=model.resource_decay(y).astype(dtype),
     )
-
-
-def consumer_grid(model: "Model") -> tuple[np.ndarray, float]:
-    """
-    Construye la malla uniforme del espacio de rasgos
-    de los consumidores y devuelve también su paso espacial.
-    """
-    xmin, xmax = model.consumer_domain[0]
-    x = np.linspace(xmin, xmax, model.n_x, dtype=dtype)
-    hx = cast(float, x[1] - x[0])
-    return x, hx
-
-
-def resource_grid(model: "Model") -> tuple[np.ndarray, float]:
-    """
-    Construye la malla uniforme del espacio de rasgos
-    de los recursos y devuelve también su paso espacial.
-    """
-    ymin, ymax = model.resource_domain[0]
-    y = np.linspace(ymin, ymax, model.n_y, dtype=dtype)
-    hy = cast(float, y[1] - y[0])
-    return y, hy
-
-
-def time_grid(model: "Model") -> tuple[np.ndarray, float]:
-    """
-    Construye la discretización temporal uniforme
-    y devuelve también el tamaño del paso temporal.
-    """
-    t = np.linspace(0, model.T, model.n_t, dtype=dtype)
-    delta_t = cast(float, t[1] - t[0])
-    return t, delta_t
-
-
-def get_simpson_weights(N: int, h: float) -> np.ndarray:
-    """
-    Genera un vector de pesos de Simpson de tamaño N.
-
-    Requiere N impar.
-    """
-    if N % 2 == 0:
-        raise ValueError("La regla de Simpson requiere un número IMPAR de puntos (N).")
-
-    weights = np.ones(N, dtype=dtype)
-    weights[1:-1:2] = 4.0
-    weights[2:-1:2] = 2.0
-
-    return (h / 3.0) * weights
 
 
 def compute_consumer_integral(
@@ -118,7 +85,29 @@ def compute_consumer_integral(
 
         I(x_i) = ∫ K(x_i,y) R(y) dy
 
-    mediante cuadratura numérica.
+    sobre una malla multidimensional utilizando
+    cuadratura de Simpson tensorial.
+
+    Parameters
+    ----------
+    kernel : np.ndarray
+        Matriz de interacción de forma
+
+            (N_consumer, N_resource).
+
+    resource_distribution : np.ndarray
+        Distribución discreta del recurso de forma
+
+            (N_resource,).
+
+    weights : np.ndarray
+        Pesos de Simpson asociados a la malla de recursos.
+
+    Returns
+    -------
+    np.ndarray
+        Aproximación de I evaluada en todos los
+        puntos de la malla de consumidores.
     """
     weighted_resource = weights * resource_distribution
     return kernel @ weighted_resource
@@ -133,9 +122,34 @@ def compute_resource_integral(
     """
     Evalúa
 
-        J(y_j) = ∫ r(x) K(x,y_j) n(x) dx
+        J(y_j) = ∫ r(x)K(x,y_j)n(x) dx
 
-    mediante cuadratura numérica.
+    sobre una malla multidimensional utilizando
+    cuadratura de Simpson tensorial.
+
+    Parameters
+    ----------
+    kernel : np.ndarray
+        Matriz de interacción de forma
+
+            (N_consumer, N_resource).
+
+    growth_rate : np.ndarray
+        Valores de r(x) evaluados en la malla
+        de consumidores.
+
+    consumer_distribution : np.ndarray
+        Distribución discreta de consumidores.
+
+    weights : np.ndarray
+        Pesos de Simpson asociados a la malla
+        de consumidores.
+
+    Returns
+    -------
+    np.ndarray
+        Aproximación de J evaluada en todos los
+        puntos de la malla de recursos.
     """
     weighted_consumer = weights * growth_rate * consumer_distribution
     return kernel.T @ weighted_consumer
