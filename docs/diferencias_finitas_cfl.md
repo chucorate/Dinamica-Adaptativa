@@ -10,21 +10,21 @@ Este documento estudia las condiciones de estabilidad temporal para el esquema $
 
 Se utiliza la transformada de Fourier:
 
-$$\hat{f}(\xi) := \mathcal{F}{[f]}(\xi) = \int_{-\infty}^{\infty} f(x)\,e^{-2\pi i \xi x}\,dx,$$
+$$\hat{f}(\xi) := \mathcal{F}{[f]}(\xi) = \int_{-\infty}^{\infty} f(x)  e^{-2\pi i \xi x} \, dx,$$
 
 donde $\xi \in \mathbb{R}$ representa la frecuencia en ciclos por unidad de longitud. La transformada inversa correspondiente es:
 
-$$f(x) = {\mathcal{F}^{-1}[\hat{f}]}(x) = \int_{-\infty}^{\infty} \hat{f}(\xi)\,e^{2\pi i \xi x}\,d\xi.$$
+$$f(x) = {\mathcal{F}^{-1}[\hat{f}]}(x) = \int_{-\infty}^{\infty} \hat{f}(\xi)  e^{2\pi i \xi x} \, d\xi.$$
 
 Las dos propiedades relevantes para el análisis son:
 
 **Propiedad de derivación:** Para $f$ suficientemente regular,
 
-$${\mathcal{F}[\partial_x f]}(\xi) = 2\pi i \xi\,\hat{f}(\xi),$$
+$${\mathcal{F}[\partial_x f]}(\xi) = 2\pi i \xi  \hat{f}(\xi),$$
 
 de donde, aplicando la propiedad dos veces:
 
-$${\mathcal{F}[\partial_{xx} f]}(\xi) = (2\pi i \xi)^2 \hat{f}(\xi) = -4\pi^2\xi^2\,\hat{f}(\xi).$$
+$${\mathcal{F}[\partial_{xx} f]}(\xi) = (2\pi i \xi)^2 \hat{f}(\xi) = -4\pi^2\xi^2  \hat{f}(\xi).$$
 
 **Teorema de Parseval:**
 
@@ -36,11 +36,11 @@ de modo que controlar la norma de $\hat{f}$ en el espacio de frecuencias equival
 
 Para motivar el análisis del esquema discreto, se aplica la transformada a la ecuación del consumidor con coeficientes constantes $g$ y $\varepsilon$:
 
-$$\partial_t n = \varepsilon\,\partial_{xx}n + g\,n.$$
+$$\partial_t n = \varepsilon  \partial_{xx}n + g  n.$$
 
 Tomando la transformada de Fourier respecto de $x$, y usando la propiedad de derivación:
 
-$$\partial_t \hat{n}(\xi,t) = \varepsilon\,{\mathcal{F}[\partial_{xx}n]}(\xi,t) + g\,\hat{n}(\xi,t) = \varepsilon\bigl(-4\pi^2\xi^2\bigr)\hat{n}(\xi,t) + g\,\hat{n}(\xi,t).$$
+$$\partial_t \hat{n}(\xi,t) = \varepsilon  {\mathcal{F}[\partial_{xx}n]}(\xi,t) + g  \hat{n}(\xi,t) = \varepsilon\bigl(-4\pi^2\xi^2\bigr)\hat{n}(\xi,t) + g  \hat{n}(\xi,t).$$
 
 Esto se reduce a una EDO escalar en $\hat{n}$ para cada frecuencia fija $\xi$:
 
@@ -48,7 +48,7 @@ $$\partial_t \hat{n}(\xi,t) = \underbrace{\bigl(-4\pi^2\varepsilon\xi^2 + g\bigr
 
 con solución exacta:
 
-$$\hat{n}(\xi,t) = e^{\sigma(\xi)\,t}\,\hat{n}(\xi,0).$$
+$$\hat{n}(\xi,t) = e^{\sigma(\xi)  t}  \hat{n}(\xi,0).$$
 
 Cada frecuencia crece o decrece según el signo de $\sigma(\xi)$: para $g < 0$, se tiene $\sigma(\xi) < 0$ para toda $\xi$, y la solución decae en todas sus componentes frecuenciales. La transformada de Fourier convierte el problema de estabilidad de una EDP en una colección de problemas escalares independientes, uno por frecuencia.
 
@@ -62,7 +62,7 @@ donde $\hat{n} \in \mathbb{C}$ es la amplitud del modo de frecuencia $\xi$. Esta
 
 Investigando, fue posible hallar que 
 
-$$\xi \in \left[-\frac{1}{2h_x},\;\frac{1}{2h_x}\right].$$
+$$\xi \in \left[-\frac{1}{2h_x}, \frac{1}{2h_x}\right].$$
 
 A partir de que, en una malla de paso $h_x$, la frecuencia máxima representable sin aliasing está dada por el criterio de Nyquist: dos puntos por ciclo como mínimo, lo que impone $1/|\xi|\geq  2h_x$.
 
@@ -76,13 +76,13 @@ Iterando desde el instante inicial: $\hat{n}^k = G(\xi)^k\hat{n}^0$, de donde $|
 
 **Criterio de estabilidad** Para que los errores no crezcan, la amplitud de cada modo no debe aumentar con los pasos temporales:
 
-$$\boxed{|G(\xi)| \leq 1 \qquad \forall\,\xi \in \left[-\frac{1}{2h_x},\frac{1}{2h_x}\right].}$$
+$$\boxed{|G(\xi)| \leq 1 \qquad \forall  \xi \in \left[-\frac{1}{2h_x},\frac{1}{2h_x}\right].}$$
 
 ## 2. Estabilidad del Esquema $\theta$ para el Consumidor
 
 El esquema $\theta$ para la ecuación del consumidor es:
 
-$$\left(I + \theta\Delta t\,L - \Delta t\,G^k\right)n^{k+1} = B_\theta\,n^k,\qquad B_\theta = I-(1-\theta)\Delta t\,L,$$
+$$\left(I + \theta\Delta t  L - \Delta t  G^k\right)n^{k+1} = B_\theta  n^k,\qquad B_\theta = I-(1-\theta)\Delta t  L,$$
 
 donde $L = -\varepsilon\Delta_h$ es el operador de difusión discreto (semidefinido positivo) y $G^k = \mathrm{diag}(g(x_0,R^k),\ldots,g(x_{N_x-1},R^k))$. La fracción $\theta$ de la difusión se trata implícitamente (usa $n^{k+1}$) y la fracción $(1-\theta)$ explícitamente (usa $n^k$). La reacción $G^k n^{k+1}$ siempre usa $n^{k+1}$ con los coeficientes del paso anterior.
 
@@ -90,15 +90,15 @@ donde $L = -\varepsilon\Delta_h$ es el operador de difusión discreto (semidefin
 
 El primer paso es calcular la acción de $L$ sobre el modo $e^{2\pi i\xi j h_x}$. La acción de $L = -\varepsilon\Delta_h$ en un nodo interior $j$ es:
 
-$$(Ln)_j = -\varepsilon\,\frac{n_{j-1} - 2n_j + n_{j+1}}{h_x^2}.$$
+$$(Ln)_j = -\varepsilon  \frac{n_{j-1} - 2n_j + n_{j+1}}{h_x^2}.$$
 
 Sustituyendo $n_j = e^{2\pi i\xi j h_x}$:
 
-$$(Ln)_j = -\varepsilon\,\frac{e^{2\pi i\xi(j-1)h_x} - 2\,e^{2\pi i\xi j h_x} + e^{2\pi i\xi(j+1)h_x}}{h_x^2}.$$
+$$(Ln)_j = -\varepsilon  \frac{e^{2\pi i\xi(j-1)h_x} - 2  e^{2\pi i\xi j h_x} + e^{2\pi i\xi(j+1)h_x}}{h_x^2}.$$
 
 Se factoriza $e^{2\pi i\xi j h_x}$:
 
-$$(Ln)_j = -\varepsilon\,e^{2\pi i\xi j h_x}\cdot\frac{e^{-2\pi i\xi h_x} - 2 + e^{2\pi i\xi h_x}}{h_x^2}.$$
+$$(Ln)_j = -\varepsilon  e^{2\pi i\xi j h_x}\cdot\frac{e^{-2\pi i\xi h_x} - 2 + e^{2\pi i\xi h_x}}{h_x^2}.$$
 
 La expresión en el numerador se simplifica usando $e^{i\theta} + e^{-i\theta} = 2\cos\theta$ con $\theta = 2\pi\xi h_x$:
 
@@ -110,7 +110,7 @@ $$2\cos(2\pi\xi h_x) - 2 = -4\sin^2(\pi\xi h_x).$$
 
 Sustituyendo todo lo anterior:
 
-$$(Ln)_j = -\varepsilon\,e^{2\pi i\xi j h_x}\cdot\frac{-4\sin^2(\pi\xi h_x)}{h_x^2} = \underbrace{\frac{4\varepsilon}{h_x^2}\sin^2(\pi\xi h_x)}_{\lambda_L(\xi)}\cdot e^{2\pi i\xi j h_x}.$$
+$$(Ln)_j = -\varepsilon  e^{2\pi i\xi j h_x}\cdot\frac{-4\sin^2(\pi\xi h_x)}{h_x^2} = \underbrace{\frac{4\varepsilon}{h_x^2}\sin^2(\pi\xi h_x)}_{\lambda_L(\xi)}\cdot e^{2\pi i\xi j h_x}.$$
 
 El modo $e^{2\pi i\xi j h_x}$ es vector propio de $L$ con valor propio:
 
@@ -124,25 +124,25 @@ $$\lambda_L^{\max} = \frac{4\varepsilon}{h_x^2}.$$
 
 Con coeficientes congelados $g^k = g$, el operador $G^k = gI$ actúa como multiplicación escalar. Se sustituye $n_j^k = \hat{n}^k e^{2\pi i\xi j h_x}$ en el esquema $\theta$:
 
-- **Lado izquierdo.** Usando que $L\,e^{2\pi i\xi j h_x} = \lambda_L(\xi)\,e^{2\pi i\xi j h_x}$ y que $G^k\,e^{2\pi i\xi j h_x} = g\,e^{2\pi i\xi j h_x}$:
+- **Lado izquierdo.** Usando que $L  e^{2\pi i\xi j h_x} = \lambda_L(\xi)  e^{2\pi i\xi j h_x}$ y que $G^k  e^{2\pi i\xi j h_x} = g  e^{2\pi i\xi j h_x}$:
 
-$$\bigl(I + \theta\Delta t\,L - \Delta t\,G^k\bigr)n^{k+1} = \bigl(1 + \theta\Delta t\,\lambda_L(\xi) - \Delta t\,g\bigr)\hat{n}^{k+1}\,e^{2\pi i\xi j h_x}.$$
+$$\bigl(I + \theta\Delta t  L - \Delta t  G^k\bigr)n^{k+1} = \bigl(1 + \theta\Delta t  \lambda_L(\xi) - \Delta t  g\bigr)\hat{n}^{k+1}  e^{2\pi i\xi j h_x}.$$
 
 - **Lado derecho:** 
 
-$$B_\theta\,n^k = \bigl(I - (1-\theta)\Delta t\,L\bigr)n^k= \bigl(1-(1-\theta)\Delta t\,\lambda_L(\xi)\bigr)\hat{n}^k\,e^{2\pi i\xi j h_x}.$$
+$$B_\theta  n^k = \bigl(I - (1-\theta)\Delta t  L\bigr)n^k= \bigl(1-(1-\theta)\Delta t  \lambda_L(\xi)\bigr)\hat{n}^k  e^{2\pi i\xi j h_x}.$$
 
 Igualando ambos lados y cancelando el factor común $e^{2\pi i\xi j h_x} \neq 0$:
 
-$$\bigl(1 + \theta\Delta t\,\lambda_L(\xi) - \Delta t\,g\bigr)\hat{n}^{k+1} = \bigl(1-(1-\theta)\Delta t\,\lambda_L(\xi)\bigr)\hat{n}^k.$$
+$$\bigl(1 + \theta\Delta t  \lambda_L(\xi) - \Delta t  g\bigr)\hat{n}^{k+1} = \bigl(1-(1-\theta)\Delta t  \lambda_L(\xi)\bigr)\hat{n}^k.$$
 
 Despejando $G(\xi) = \hat{n}^{k+1}/\hat{n}^k$ se obtiene el **factor de amplificación del esquema $\theta$**:
 
-$$\boxed{G(\xi) = \frac{1-(1-\theta)\Delta t\,\lambda_L(\xi)}{1+\theta\Delta t\,\lambda_L(\xi) - \Delta t\,g} = \frac{1-(1-\theta)\,\dfrac{4\varepsilon\Delta t}{h_x^2}\sin^2(\pi\xi h_x)}{1+\theta\,\dfrac{4\varepsilon\Delta t}{h_x^2}\sin^2(\pi\xi h_x) - \Delta t\,g}.}$$
+$$\boxed{G(\xi) = \frac{1-(1-\theta)\Delta t  \lambda_L(\xi)}{1+\theta\Delta t  \lambda_L(\xi) - \Delta t  g} = \frac{1-(1-\theta)  \dfrac{4\varepsilon\Delta t}{h_x^2}\sin^2(\pi\xi h_x)}{1+\theta  \dfrac{4\varepsilon\Delta t}{h_x^2}\sin^2(\pi\xi h_x) - \Delta t  g}.}$$
 
 Para condensar la notación se definen los parámetros adimensionales:
 
-$$\rho(\xi) := \Delta t\,\lambda_L(\xi) = \frac{4\varepsilon\Delta t}{h_x^2}\sin^2(\pi\xi h_x) \geq 0, \qquad \beta := \Delta t\,g,$$
+$$\rho(\xi) := \Delta t  \lambda_L(\xi) = \frac{4\varepsilon\Delta t}{h_x^2}\sin^2(\pi\xi h_x) \geq 0, \qquad \beta := \Delta t  g,$$
 
 de manera que:
 
@@ -154,7 +154,7 @@ Note que $\rho$ crece cuadráticament al hacer la malla más fina o al aumentar 
 
 En el modelo de Perthame, el régimen dominante es $g < 0$ (la mortalidad supera el beneficio del recurso), por lo que $\beta < 0$, o equivalentemente $|\beta| = \Delta t|g|$. El denominador satisface:
 
-$$1 + \theta\rho - \beta = 1 + \theta\rho + |\beta| \geq 1 > 0 \qquad \forall\,\rho \geq 0,\;\theta \geq 0.$$
+$$1 + \theta\rho - \beta = 1 + \theta\rho + |\beta| \geq 1 > 0 \qquad \forall  \rho \geq 0, \theta \geq 0.$$
 
 El denominador es siempre positivo: el sistema lineal $\bigl(I+\theta\Delta t L - \Delta t G^k\bigr)n^{k+1} = B_\theta n^k$ tiene solución única para todo $\Delta t > 0$.
 
@@ -205,7 +205,7 @@ Euler implícito ($\theta = 1$).
 
 $$(1-2\theta)\rho \leq 2 + |\beta|.$$
 
-Se sustituye $\rho = \Delta t\,\lambda_L(\xi)$ y se acota el lado izquierdo por su máximo sobre todo $\xi$. El máximo de $\rho(\xi)$ sobre el rango ocurre en $|\xi| = 1/(2h_x)$, donde $\sin^2(\pi \cdot \frac{1}{2h_x} \cdot h_x) = \sin^2(\pi/2) = 1$, dando $\rho_{\max} = 4\varepsilon\Delta t/h_x^2$. La condición necesaria sobre el peor modo es:
+Se sustituye $\rho = \Delta t  \lambda_L(\xi)$ y se acota el lado izquierdo por su máximo sobre todo $\xi$. El máximo de $\rho(\xi)$ sobre el rango ocurre en $|\xi| = 1/(2h_x)$, donde $\sin^2(\pi \cdot \frac{1}{2h_x} \cdot h_x) = \sin^2(\pi/2) = 1$, dando $\rho_{\max} = 4\varepsilon\Delta t/h_x^2$. La condición necesaria sobre el peor modo es:
 
 $$(1-2\theta)\frac{4\varepsilon\Delta t}{h_x^2} \leq 2 + \Delta t|g|.$$
 
@@ -219,7 +219,7 @@ El análisis del signo del coeficiente de $\Delta t$ da dos subcasos:
 
 - **Si $(1-2\theta)\dfrac{4\varepsilon}{h_x^2} > |g|$**: el coeficiente es positivo y se puede dividir, obteniendo la condición CFL:
 
-$$\boxed{\Delta t \leq \frac{2}{\,(1-2\theta)\dfrac{4\varepsilon}{h_x^2} - |g|\,}.} \tag{CFL-$\theta$}$$
+$$\boxed{\Delta t \leq \frac{2}{  (1-2\theta)\dfrac{4\varepsilon}{h_x^2} - |g|  }.} \tag{CFL-$\theta$}$$
 
 **Interpretación de los casos límite.**
 
@@ -253,7 +253,7 @@ Comparando $(\text{CFL}-\theta)$ y $(\text{POS}-\theta)$ para $\theta = 0$ con $
 
 Cuando la positividad se viola pero se mantiene la estabilidad $\ell^2$, es decir, cuando 
 
-$$h_x^2/(4(1-\theta)\varepsilon) < \Delta t \leq h_x^2/(2(1-\theta)\varepsilon),$$ 
+$$h_x^2 / (4(1-\theta)\varepsilon) < \Delta t \leq h_x^2 / (2(1-\theta)\varepsilon),$$ 
 
 el factor de amplificación satisface $-1 \leq G(\xi) < 0$: el modo de frecuencia $\xi$ cambia de signo en cada paso temporal y converge a cero, pero no monótonamente. Esto genera oscilaciones espaciales de periodo $2h_x$ que se manifiestan como ruido en la solución.
 
@@ -261,11 +261,11 @@ el factor de amplificación satisface $-1 \leq G(\xi) < 0$: el modo de frecuenci
 
 Cuando $g > 0$, $\beta > 0$ y el denominador $1+\theta\rho - \beta$ puede anularse o cambiar de signo. El caso más crítico es el modo $\xi = 0$ (el modo que controla la cantidad total $\rho(t) = \sum_j n_j^k h_x$), donde $\lambda_L(0) = 0$ y $\rho(0) = 0$:
 
-$$G(0) = \frac{1}{1 - \beta} = \frac{1}{1 - \Delta t\,g}.$$
+$$G(0) = \frac{1}{1 - \beta} = \frac{1}{1 - \Delta t  g}.$$
 
-Para $\Delta t\,g < 1$: $G(0) > 1$ (crecimiento físico del modo promedio). 
+Para $\Delta t  g < 1$: $G(0) > 1$ (crecimiento físico del modo promedio). 
 
-Para $\Delta t\,g = 1$: el denominador se anula (singularidad). Para $\Delta t\,g > 1$: $G(0) < 0$ (el modo promedio cambia de signo). 
+Para $\Delta t  g = 1$: el denominador se anula (singularidad). Para $\Delta t  g > 1$: $G(0) < 0$ (el modo promedio cambia de signo). 
 
 La condición de positividad para el modo $\xi = 0$ exige:
 
@@ -277,7 +277,7 @@ donde $(g_j^k)^+ = \max(g_j^k, 0)$. En el modelo de Perthame, $g > 0$ solo ocurr
 
 El esquema para el recurso dinámico es Euler explícito. La ecuación discreta en cada punto $y_j$, con $\Lambda_j^k = m_2(y_j) + J_j^k$ y $J_j^k$ calculado mediante la regla de Simpson, es:
 
-$$R_j^{k+1} = R_j^k + \Delta t\bigl[R_{in,j} - R_j^k\,\Lambda_j^k\bigr] = \underbrace{(1 - \Delta t\,\Lambda_j^k)}_{G_R}\,R_j^k + \Delta t\,R_{in,j}.$$
+$$R_j^{k+1} = R_j^k + \Delta t\bigl[R_{in,j} - R_j^k  \Lambda_j^k\bigr] = \underbrace{(1 - \Delta t  \Lambda_j^k)}_{G_R}  R_j^k + \Delta t  R_{in,j}.$$
 
 **Por qué no aplica el ansatz de Fourier.** La ecuación del recurso no contiene ningún operador diferencial en la variable $y$: no hay difusión espacial en la dirección del rasgo del recurso. Los distintos puntos $y_j$ están acoplados únicamente a través de la integral 
 
@@ -287,46 +287,46 @@ que es un parámetro para la recurrencia de $R_j^k$ dado el estado del consumido
 
 ### 3.1 Estabilidad de la recurrencia escalar
 
-Se define la desviación respecto al equilibrio local $\bar{R}_j^{k} = R_{in,j}/ \Lambda_j^k$:
+Se define la desviación respecto al equilibrio local ${\bar{R}_j^{k}} = {R_{in,j}}/ \Lambda_j^k$:
 
 $$e_j^k := R_j^k - \bar{R}_j^k.$$
 
-La evolución del error satisface, usando $\Delta t\,R_{in,j} = \Delta t\,\Lambda_j^k\,\bar{R}_j^k$:
+La evolución del error satisface, usando $\Delta t  R_{in,j} = \Delta t  \Lambda_j^k  \bar{R}_j^k$:
 
-$$e_j^{k+1} = R_j^{k+1} - \bar{R}_j^k = G_R\,R_j^k + \Delta t\,R_{in,j} - \bar{R}_j^k = G_R(R_j^k - \bar{R}_j^k) = G_R\,e_j^k.$$
+$$e_j^{k+1} = R_j^{k+1} - \bar{R}_j^k = G_R  R_j^k + \Delta t  R_{in,j} - \bar{R}_j^k = G_R(R_j^k - \bar{R}_j^k) = G_R  e_j^k.$$
 
-El error al paso $k$ es $e_j^k = G_R^k\,e_j^0$, y su módulo evoluciona como $|e_j^k| = |G_R|^k\,|e_j^0|$.
+El error al paso $k$ es $e_j^k = G_R^k  e_j^0$, y su módulo evoluciona como $|e_j^k| = |G_R|^k  |e_j^0|$.
 
 ### 3.2 Condición de estabilidad $\ell^2$
 
 Para que $|e_j^k|$ permanezca acotado: $|G_R| \leq 1$, es decir:
 
-$$|1 - \Delta t\,\Lambda_j^k| \leq 1 \iff -1 \leq 1 - \Delta t\,\Lambda_j^k \leq 1.$$
+$$|1 - \Delta t  \Lambda_j^k| \leq 1 \iff -1 \leq 1 - \Delta t  \Lambda_j^k \leq 1.$$
 
 La cota superior ($1 - \Delta t\Lambda_j^k \leq 1$) reduce a $\Lambda_j^k \geq 0$, siempre verdadero. La cota inferior ($1 - \Delta t\Lambda_j^k \geq -1$) da $\Delta t\Lambda_j^k \leq 2$:
 
-$$\boxed{\Delta t \leq \frac{2}{\displaystyle\max_{j,k}\,\Lambda_j^k}.} \qquad (\text{CFL}-R)$$
+$$\boxed{\Delta t \leq \frac{2}{\displaystyle\max_{j,k}  \Lambda_j^k}.} \qquad (\text{CFL}-R)$$
 
 ### 3.3 Condición de positividad
 
 Para $R_j^{k+1} \geq 0$ cuando $R_j^k \geq 0$ y $R_{in,j} \geq 0$, se necesita $G_R \geq 0$:
 
-$$1 - \Delta t\,\Lambda_j^k \geq 0 \iff \boxed{\Delta t \leq \frac{1}{\displaystyle\max_{j,k}\,\Lambda_j^k}.} \qquad (\text{POS}-R)$$
+$$1 - \Delta t  \Lambda_j^k \geq 0 \iff \boxed{\Delta t \leq \frac{1}{\displaystyle\max_{j,k}  \Lambda_j^k}.} \qquad (\text{POS}-R)$$
 
-Cuando $(\text{POS}-R)$ se viola pero $(\text{CFL}-R)$ se satisface, el factor $G_R$ toma valores en $[-1,0)$: el recurso $R_j^k$ oscila entre valores positivos y negativos en pasos alternos. Como $R$ alimenta el cálculo de $g^k = r(x)\int K(x,y)R^k(y)\,dy - m_1(x)$, estos valores negativos dan lugar a un $g^k$ artificialmente reducido (o incluso muy negativo), desestabilizando la ecuación del consumidor a través del acoplamiento.
+Cuando $(\text{POS}-R)$ se viola pero $(\text{CFL}-R)$ se satisface, el factor $G_R$ toma valores en $[-1,0)$: el recurso $R_j^k$ oscila entre valores positivos y negativos en pasos alternos. Como $R$ alimenta el cálculo de $g^k = r(x)\int K(x,y)R^k(y)  dy - m_1(x)$, estos valores negativos dan lugar a un $g^k$ artificialmente reducido (o incluso muy negativo), desestabilizando la ecuación del consumidor a través del acoplamiento.
 
 ### 3.4 Estimación de $\Lambda_j^k$
 
 Para cuantificar la condición CFL, se estima $\Lambda_j^k$ al instante inicial con dato uniforme $n_i^0 = n_0$ y parámetros constantes $r(x_i) = r$:
 
-$$\Lambda_j^0 = m_2 + r\,n_0\sum_{i=0}^{N_x-1}w_i^{(x)}\,K(x_i,y_j) \approx m_2 + r\,n_0\int_{x_{\min}}^{x_{\max}} K(x,y_j)\,dx.$$
+$$\Lambda_j^0 = m_2 + r  n_0\sum_{i=0}^{N_x-1}w_i^{(x)}  K(x_i,y_j) \approx m_2 + r  n_0\int_{x_{\min}}^{x_{\max}} K(x,y_j) \, dx.$$
 
 Para el kernel gaussiano $K(x,y) = \frac{1}{\sigma_K\sqrt{2\pi}}e^{-|x-y|^2/(2\sigma_K^2)}$, la integral se evalúa analíticamente:
 
-$$\int_{x_{\min}}^{x_{\max}}K(x,y_j)\,dx = \frac{1}{2}\left[\mathrm{erf}\!\left(\frac{x_{\max}-y_j}{\sigma_K\sqrt{2}}\right) - \mathrm{erf}\!\left(\frac{x_{\min}-y_j}{\sigma_K\sqrt{2}}\right)\right].$$
+$$\int_{x_{\min}}^{x_{\max}}K(x,y_j) \, dx = \frac{1}{2}\left[\mathrm{erf}\!\left(\frac{x_{\max}-y_j}{\sigma_K\sqrt{2}}\right) - \mathrm{erf}\!\left(\frac{x_{\min}-y_j}{\sigma_K\sqrt{2}}\right)\right].$$
 
 Donde $\mathrm{erf}(z)=\frac{2}{\pi}\int_0^ze^{-t^2}dt$. Para dominios amplios respecto de $\sigma_K$, la integral es aproximadamente 1 (toda la gaussiana
-está en el dominio) y $\Lambda_j^0 \approx m_2 + r\,n_0$.
+está en el dominio) y $\Lambda_j^0 \approx m_2 + r  n_0$.
 
 ### 3.5 Caso cuasi-estacionario
 
@@ -354,7 +354,7 @@ La cantidad total de consumidores $\rho(t_k) = \sum_j n_j^k h_x$ corresponde exa
 
 Para $\xi = 0$: $\lambda_L(0) = \frac{4\varepsilon}{h_x^2}\sin^2(0) = 0$, y por tanto $\rho(0) = 0$. El factor de amplificación del esquema $\theta$ en el modo $\xi = 0$ es:
 
-$$G(0) = \frac{1 - (1-\theta)\cdot 0}{1 + \theta\cdot 0 - \beta} = \frac{1}{1-\beta} = \frac{1}{1 - \Delta t\,g}.$$
+$$G(0) = \frac{1 - (1-\theta)\cdot 0}{1 + \theta\cdot 0 - \beta} = \frac{1}{1-\beta} = \frac{1}{1 - \Delta t  g}.$$
 
 Para $g < 0$ y cualquier valor de $\theta$: $G(0) = 1/(1+\Delta t|g|) \in (0,1)$. El modo $\xi = 0$ es **incondicionalmente estable en el esquema $\theta$**, independientemente de $\Delta t$.
 
@@ -362,6 +362,6 @@ Esto implica que las oscilaciones en $\rho(t)$ no pueden provenir del modo $\xi 
 
 1. **Recurso dinámico con $(\text{POS}-R)$ violada:** $\Delta t > 1/\Lambda_{\max}$ hace que $G_R < 0$ y $R_j^k$ tome valores negativos, generando valores de $g^k$ incorrectos que desestabilizan la ecuación del consumidor por acoplamiento.
 
-2. **Dato inicial no resuelto:** si $\sigma_{init} < 5\,h_x$, el laplaciano discreto amplifica artificialmente los modos de alta frecuencia del dato inicial, generando oscilaciones transitorias.
+2. **Dato inicial no resuelto:** si $\sigma_{init} < 5  h_x$, el laplaciano discreto amplifica artificialmente los modos de alta frecuencia del dato inicial, generando oscilaciones transitorias.
 
 3. **Efectos no lineales del acoplamiento:** cuando $\Delta t$ es grande, las variaciones de $R^k$ entre pasos introducen errores en $g^k$ no capturados por el análisis de coeficientes congelados.
