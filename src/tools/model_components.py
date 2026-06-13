@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.constants import dtype
+from src.constants import dtype, MIN_DENOMINATOR
 
 if TYPE_CHECKING:
     from src.model import Model
@@ -175,8 +175,8 @@ def compute_stationary_resource(
     )
 
     denominator = coeffs.resource_decay + resource_integral
-    # Regularización: evitar denominador cero o muy pequeño
-    min_denominator = 1e-10
-    denominator = np.maximum(denominator, min_denominator)
+
+    # evitar denominador cero o muy pequeño
+    denominator = np.maximum(denominator, MIN_DENOMINATOR)
 
     return coeffs.resource_supply_rate / denominator

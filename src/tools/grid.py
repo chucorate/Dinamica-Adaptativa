@@ -151,7 +151,7 @@ def time_grid(model: "Model") -> tuple[np.ndarray, float]:
     y devuelve también el tamaño del paso temporal.
     """
     t = np.linspace(0, model.T, model.n_t, dtype=dtype)
-    delta_t = cast(float, t[1] - t[0])
+    delta_t = float(t[1] - t[0])
     return t, delta_t
 
 
