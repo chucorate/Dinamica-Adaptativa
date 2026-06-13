@@ -2,7 +2,9 @@
 
 ## Contexto
 
-Este documento estudia las condiciones de estabilidad temporal para el esquema $\theta$ descrito en la documentación del método de diferencias finita (ver [docs/diferencias_finitas_algoritmo.md](docs/diferencias_finitas_algoritmo.md)). A partir del sistema discreto ya construido, se determinan las restricciones sobre el paso temporal $\Delta t$, es decir, las **condiciones CFL**, que garantizan que los errores numéricos no crezcan a lo largo de la integración. El análisis se apoya en la transformada de Fourier para derivar sistemáticamente el factor de amplificación de cada modo del esquema.
+Este documento estudia las condiciones de estabilidad temporal para el esquema $\theta$ descrito en la documentación del método de diferencias finita (ver [docs/diferencias_finitas_algoritmo.md](docs/diferencias_finitas_algoritmo.md)). A partir del sistema discreto ya construido, se determinan las restricciones sobre el paso temporal $\Delta t$, es decir, las **condiciones CFL**, que garantizan que los errores numéricos no crezcan a lo largo de la integración. 
+
+El análisis se apoya en la transformada de Fourier para derivar el factor de amplificación de cada modo del esquema. Para ello, se adopta la hipótesis de coeficientes congelados, suponiendo que durante un paso temporal la función de crecimiento $g(x,R)$ puede considerarse aproximadamente constante en una vecindad del punto de análisis, lo que permite usar Fourier a pesar de la dependencia espacial de $g$.
 
 ## 1. La Transformada de Fourier como Herramienta de Análisis
 
