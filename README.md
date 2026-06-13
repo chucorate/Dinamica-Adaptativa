@@ -140,7 +140,7 @@ Para detalles sobre análisis de estabilidad CFL, condiciones de borde, y discre
 - [x] Crear funciones para plotear las funciones del modelo y la solución.
 - [ ] Estudiar monomorficidad y dimorficidad. ***[en progreso]***
 - [x] Probar distintos métodos de diferencias finitas (explícito, implícito y semi-implícito).
-- [ ] Estudiar oscilaciones y sus posibles orígenes (en caso de aparecer).
+- [x] Estudiar CFL.
 - [ ] Probar métodos espectrales. ***[en progreso]***
 - [ ] Simular canibalismo.
 - [x] Replicar los resultados del paper en el caso gaussiano.
