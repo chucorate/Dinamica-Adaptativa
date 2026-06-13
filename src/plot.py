@@ -15,7 +15,10 @@ if TYPE_CHECKING:
 
 
 def _require_dimension(model: "Model", dimensions: int) -> None:
-    assert isinstance(dimensions, int) and dimensions >= 1
+    if not isinstance(dimensions, int) or dimensions < 1:
+        raise ValueError(
+            f"dimensions must be positive int, got {dimensions}"
+        )
 
     if model.consumer_dimension != dimensions:
         raise ValueError(

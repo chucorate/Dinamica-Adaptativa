@@ -165,10 +165,18 @@ def compute_stationary_resource(
 
         R(y) = Rin(y) / ( m2(y) + ∫ r(x)K(x,y)n(x)dx )
 
+    Nota: La función aplica una regularización numérica para evitar
+    división por cero. Si el denominador es menor que 1e-10,
+    se clipa a ese valor.
     """
 
     resource_integral = compute_resource_integral(
         coeffs.kernel, coeffs.consumer_growth_rate, consumer_distribution, weights_x
     )
 
-    return coeffs.resource_supply_rate / (coeffs.resource_decay + resource_integral)
+    denominator = coeffs.resource_decay + resource_integral
+    # Regularización: evitar denominador cero o muy pequeño
+    min_denominator = 1e-10
+    denominator = np.maximum(denominator, min_denominator)
+
+    return coeffs.resource_supply_rate / denominator

@@ -6,12 +6,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.funciones_generales import (
-    dtype,
+from src.constants import dtype
+from src.tools.model_components import (
     build_model_coefficients,
-    get_simpson_weights,
     compute_consumer_integral,
     compute_stationary_resource,
+)
+from src.tools.grid import (
+    get_simpson_weights,
     consumer_grid,
     resource_grid,
     time_grid,

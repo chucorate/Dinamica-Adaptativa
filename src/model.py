@@ -20,15 +20,22 @@ from src.plot import Plot
 TraitFunction = Callable[[np.ndarray], np.ndarray]
 KernelFunction = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
+# Constantes para validación de funciones
+# Tamaño de grilla de prueba para validar funciones de rasgos
+_VALIDATION_TRAIT_GRID_SIZE = 5
+# Tamaño de grilla de prueba para validar kernels
+_VALIDATION_KERNEL_CONSUMER_SIZE = 7
+_VALIDATION_KERNEL_RESOURCE_SIZE = 11
+
 
 def _validate_trait_function(f: TraitFunction, dimension: int) -> None:
-    test = np.zeros((5, dimension))
+    test = np.zeros((_VALIDATION_TRAIT_GRID_SIZE, dimension))
     out = f(test)
 
     if not isinstance(out, np.ndarray):
         raise TypeError("La función debe retornar un np.ndarray.")
 
-    if out.shape != (5,):
+    if out.shape != (_VALIDATION_TRAIT_GRID_SIZE,):
         raise ValueError(
             f"Los input y output de la función debe tener el mismo shape.\n"
             f"Test shape: {test.shape}, output shape: {out.shape}."
@@ -38,16 +45,18 @@ def _validate_trait_function(f: TraitFunction, dimension: int) -> None:
 def _validate_kernel_function(
     kernel: KernelFunction, consumer_dimension: int, resource_dimension: int
 ) -> None:
-    x = np.zeros((7, consumer_dimension))
-    y = np.zeros((11, resource_dimension))
+    x = np.zeros((_VALIDATION_KERNEL_CONSUMER_SIZE, consumer_dimension))
+    y = np.zeros((_VALIDATION_KERNEL_RESOURCE_SIZE, resource_dimension))
 
     K = kernel(x, y)
 
     if not isinstance(K, np.ndarray):
         raise TypeError("El kernel debe retornar un np.ndarray.")
 
-    if K.shape != (7, 11):
-        raise ValueError(f"Shape inválido: {K.shape}. Se esperaba (7,11).")
+    if K.shape != (_VALIDATION_KERNEL_CONSUMER_SIZE, _VALIDATION_KERNEL_RESOURCE_SIZE):
+        raise ValueError(
+            f"Shape inválido: {K.shape}. Se esperaba ({_VALIDATION_KERNEL_CONSUMER_SIZE},{_VALIDATION_KERNEL_RESOURCE_SIZE})."
+        )
 
 
 def _sanitize_discretion_points(
@@ -152,14 +161,26 @@ class Model:
             el operador de difusión Δn.
         """
 
-        assert len(consumer_domain.shape) == 2
-        assert len(resource_domain.shape) == 2
+        if len(consumer_domain.shape) != 2:
+            raise ValueError(
+                f"consumer_domain tiene que ser un array 2D, se obtuvo {consumer_domain.shape}."
+            )
+        if len(resource_domain.shape) != 2:
+            raise ValueError(
+                f"resource_domain tiene que ser un array 2D, se obtuvo {resource_domain.shape}."
+            )
 
         self.consumer_domain = consumer_domain
         self.resource_domain = resource_domain
 
-        assert mutation_rate >= 0.0
-        assert isinstance(mutation_rate, float)
+        if mutation_rate < 0.0:
+            raise ValueError(
+                f"mutation_rate tiene que ser no negativo, se obtuvo {mutation_rate}."
+            )
+        if not isinstance(mutation_rate, (int, float, np.floating)):
+            raise TypeError(
+                f"mutation_rate tiene que ser numérico (int, float, o numpy float), se obtuvo {type(mutation_rate)}."
+            )
 
         self.mutation_rate = mutation_rate
 
@@ -262,6 +283,11 @@ class Model:
 
             r[i] = r(x[i]).
 
+        Notas
+        -----
+        - Se espera que los valores retornados sean no-negativos (r(x) ≥ 0).
+        - No se realiza validación automática de este constraint.
+        - Valores negativos pueden causar inestabilidad numérica.
         """
         _validate_trait_function(vectorized_function, self.consumer_dimension)
         self.consumer_growth_rate = vectorized_function
@@ -284,6 +310,11 @@ class Model:
 
             m[i] = m₁(x[i]).
 
+        Notas
+        -----
+        - Se espera que los valores retornados sean no-negativos (m₁(x) ≥ 0).
+        - No se realiza validación automática de este constraint.
+        - Valores negativos pueden causar inestabilidad numérica.
         """
         _validate_trait_function(vectorized_function, self.consumer_dimension)
         self.consumer_decay = vectorized_function
@@ -306,6 +337,11 @@ class Model:
 
             Rin[i] = Rin(y[i]).
 
+        Notas
+        -----
+        - Se espera que los valores retornados sean no-negativos (Rin(y) ≥ 0).
+        - No se realiza validación automática de este constraint.
+        - Valores negativos pueden causar inestabilidad numérica.
         """
         _validate_trait_function(vectorized_function, self.resource_dimension)
         self.resource_supply_rate = vectorized_function
@@ -328,6 +364,11 @@ class Model:
 
             m2[i] = m₂(y[i]).
 
+        Notas
+        -----
+        - Se espera que los valores retornados sean no-negativos (m₂(y) ≥ 0).
+        - No se realiza validación automática de este constraint.
+        - Valores negativos pueden causar inestabilidad numérica.
         """
         _validate_trait_function(vectorized_function, self.resource_dimension)
         self.resource_decay = vectorized_function
@@ -479,13 +520,22 @@ class Model:
             - Si es `False`, se resuelve la ecuación temporal del recurso.
         """
         # Checkear que los parámetros del método sean válidos
-        assert 0 <= theta and theta <= 1
-        assert border_type in ["neumann", "periodic"]
-        assert isinstance(use_stationary_resource, bool)
+        if not (0 <= theta <= 1):
+            raise ValueError(f"theta tiene que estar en [0, 1], se obtuvo {theta}.")
+        if border_type not in ["neumann", "periodic"]:
+            raise ValueError(
+                f"border_type tiene que ser 'neumann' o 'periodic', se obtuvo {border_type}."
+            )
+        if not isinstance(use_stationary_resource, bool):
+            raise TypeError(
+                f"use_stationary_resource tiene que ser un bool, se obtuvo {type(use_stationary_resource)}."
+            )
 
         # Checkear parámetros asociados al tiempo
-        assert T > 0
-        assert isinstance(n_t, int) and n_t > 0
+        if T <= 0:
+            raise ValueError(f"T tiene que ser positivo, se obtuvo {T}.")
+        if not isinstance(n_t, int) or n_t <= 0:
+            raise ValueError(f"n_t tiene que ser un entero positivo, se obtuvo {n_t}.")
         self.T = T
         self.n_t = n_t
 
