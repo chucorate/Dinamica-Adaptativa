@@ -458,6 +458,7 @@ class Model:
         border_type: Literal["neumann", "periodic"],
         theta: float,
         use_stationary_resource: bool,
+        check_cfl: bool = True,
     ) -> None:
         """
         Resuelve numéricamente el modelo de mutación-selección mediante
@@ -518,6 +519,12 @@ class Model:
         use_stationary_resource : bool
             - Si es `True`, el recurso se considera estacionario y se obtiene explícitamente.
             - Si es `False`, se resuelve la ecuación temporal del recurso.
+
+        check_cfl : bool
+            - Si es `True`, se verifican las condiciones CFL para ejecutar la simulación.
+            En caso de que alguna no se cumpla, se muestra un warning.
+            - Si es `False`, no se verifican las condiciones CFL.
+
         """
         # Checkear que los parámetros del método sean válidos
         if not (0 <= theta <= 1):
@@ -529,6 +536,10 @@ class Model:
         if not isinstance(use_stationary_resource, bool):
             raise TypeError(
                 f"use_stationary_resource tiene que ser un bool, se obtuvo {type(use_stationary_resource)}."
+            )
+        if not isinstance(check_cfl, bool):
+            raise TypeError(
+                f"check_cfl tiene que ser un bool, se obtuvo {type(check_cfl)}."
             )
 
         # Checkear parámetros asociados al tiempo
@@ -548,5 +559,5 @@ class Model:
             self.consumer_quantity,
             self.resource_distribution,
         ) = solve_model_by_finite_differences(
-            self, border_type, use_stationary_resource, theta
+            self, border_type, use_stationary_resource, theta, check_cfl
         )

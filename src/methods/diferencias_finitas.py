@@ -6,6 +6,7 @@ from scipy.sparse import diags, eye, kron, csc_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
 
 from src.constants import dtype
+from src.tools.cfl import check_cfl_conditions, check_cfl_report
 from src.tools.grid import (
     TraitGrid,
     consumer_grid,
@@ -203,6 +204,7 @@ def solve_model_by_finite_differences(
     border_type: Literal["neumann", "periodic"],
     use_stationary_resource: bool,
     theta: float = 0.5,  # Por defecto: Crank-Nicolson
+    check_cfl: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Resuelve el sistema mutación-selección-recurso mediante
@@ -243,6 +245,23 @@ def solve_model_by_finite_differences(
         if use_stationary_resource
         else model.initial_resource_distribution(y).astype(dtype)
     )
+
+    if check_cfl:
+        # TODO:
+        # Implementar el chequeo de la condición CFL de estabilidad
+        # para θ < 1/2. Dicha condición requiere una cota superior de
+        # |g(x)| = |r(x)∫K(x,y)R(y)dy - m₁(x)|, la cual depende de la
+        # solución y actualmente no se calcula automáticamente.
+        #
+        # Por el momento sólo se verifica la condición de positividad.
+        report = check_cfl_conditions(
+            grid=x_grid,
+            mutation_rate=model.mutation_rate,
+            delta_t=dt,
+            theta=theta,
+            max_abs_growth=None,
+        )
+        check_cfl_report(report)
 
     # Bucle temporal
     for k in range(1, model.n_t):
