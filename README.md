@@ -77,8 +77,8 @@ model.set_initial_data(
 model.solve_by_finite_differences(
     T=10.0,            # Tiempo final
     n_t=100,           # Número de pasos temporales
-    n_x=50,            # Resolución espacial (consumidores)
-    n_y=50,            # Resolución espacial (recursos)
+    n_x=51,            # Resolución espacial (consumidores)
+    n_y=51,            # Resolución espacial (recursos)
     border_type="periodic",
     theta=0.5,         # Crank-Nicolson
     use_stationary_resource=False,
@@ -111,8 +111,8 @@ Model(consumer_domain, resource_domain, mutation_rate)
 solve_by_finite_differences(
     T,                      # Tiempo final
     n_t,                    # Pasos temporales
-    n_x,                    # Resolución consumidores
-    n_y,                    # Resolución recursos
+    n_x,                    # Resolución consumidores (debe ser impar)
+    n_y,                    # Resolución recursos (debe ser impar)
     border_type,            # "neumann" o "periodic"
     theta,                  # 0 (explícito), 0.5 (CN), 1 (implícito)
     use_stationary_resource # bool
