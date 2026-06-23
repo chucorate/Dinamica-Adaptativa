@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal, Any
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # type: ignore[import-untyped]
 from IPython.display import HTML
 
 if TYPE_CHECKING:
@@ -52,14 +52,14 @@ class Plot:
         consumer = (
             x,
             model.consumer_distribution,
-            "Consumer trait",
-            "Consumer density",
+            "Rasgo del consumidor",
+            "Densidad del consumidor",
         )
         resource = (
             y,
             model.resource_distribution,
-            "Resource trait",
-            "Resource density",
+            "Rasgo del recurso",
+            "Densidad del recurso",
         )
         datasets = (consumer, resource)
 
@@ -87,13 +87,20 @@ class Plot:
         plt.tight_layout()
         plt.show()
 
-    def consumer_quantity(self, **kwargs) -> None:
+    def consumer_quantity(
+        self,
+        title: str = "Cantidad de consumidores en función del tiempo",
+        xlabel: str = "Tiempo",
+        ylabel: str = "Cantidad de consumidores",
+        **kwargs,
+    ) -> None:
         model = self.model
         t = model.time_grid
 
         plt.plot(t, model.consumer_quantity, **kwargs)
-        plt.xlabel("Time")
-        plt.ylabel("Consumer quantity")
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
         plt.ylim(bottom=0.0)
         plt.grid(True)
         plt.tight_layout()
@@ -167,6 +174,11 @@ class Plot:
         self,
         solution: Literal["consumer", "resource"],
         interval: int = 40,
+        speed: float = 1.0,
+        title: str | None = None,
+        xlabel: str = "Rasgo 1",
+        ylabel: str = "Rasgo 2",
+        zlabel: str = "Densidad",
         **kwargs,
     ) -> HTML:
         """
@@ -187,6 +199,10 @@ class Plot:
 
         interval : int, default=40
             Tiempo entre cuadros consecutivos en milisegundos.
+
+        speed : float, default=1.0
+            Multiplicador de velocidad de reproducción (ej. 2.0 corre al doble de velocidad
+            saltándose frames para mantener la eficiencia).
 
         **kwargs
             Argumentos adicionales pasados a
@@ -213,13 +229,28 @@ class Plot:
         fig = plt.figure(figsize=(8, 6))
         ax = fig.add_subplot(projection="3d")
 
-        ax.set_xlabel("Trait 1")
-        ax.set_ylabel("Trait 2")
-        ax.set_zlabel("Density")
+        if solution == "consumer":
+            default_title = "Evolución de la densidad del consumidor."
+        else:
+            default_title = "Evolución de la densidad del recurso."
+        title = title or default_title
+
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_zlabel(zlabel)
         ax.set_zlim(zmin, zmax)
 
         surface: Poly3DCollection = ax.plot_surface(
             X, Y, values[0].reshape(shape), vmin=zmin, vmax=zmax, **kwargs
+        )
+
+        step = max(1, int(round(speed)))
+        frames_to_render = list(range(0, model.n_t, step))
+        adjusted_interval = int(interval * (step / speed))
+        adjusted_interval = max(30, adjusted_interval)
+
+        print(
+            f"Frames totales: {len(frames_to_render)}, intervalo: {adjusted_interval}."
         )
 
         def update(frame: int):
@@ -231,15 +262,19 @@ class Plot:
                 X, Y, Z, vmin=zmin, vmax=zmax, **kwargs, color="royalblue"
             )
 
-            ax.set_title(f"t = {model.time_grid[frame]:.3f}")
+            ax.set_title(f"{title}\nt = {model.time_grid[frame]:.3f} ({speed}x)")
 
-            # if frame % 100 == 0:
-            #    print(f"Frame: {frame}.")
+            if frame % 100 == 0:
+                print(f"Frame: {frame / step}.")
 
             return (surface,)
 
         animation = FuncAnimation(
-            fig, update, frames=model.n_t, interval=interval, repeat=True
+            fig,
+            update,
+            frames=frames_to_render,
+            interval=adjusted_interval,
+            repeat=True,
         )
         plt.close(fig)
 
