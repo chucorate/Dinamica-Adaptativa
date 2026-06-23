@@ -11,4 +11,8 @@ dtype = np.float64
 
 # Valor mínimo permitido para denominadores en cálculos numéricos
 # para evitar división por cero o números extremadamente pequeños que causen inestabilidad.
-MIN_DENOMINATOR = 1e-10
+MIN_DENOMINATOR = 1e-12
+
+# Valor mínimo permitido para las densidades de consumidor y recursos
+# para evitar comportamientos inesperados por floating points (por ejemplo, que la población reviva luego de cierto tiempo)
+MIN_DENSITY = 1e-9

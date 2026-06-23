@@ -1,4 +1,5 @@
 # WIP, no funciona del todo bien
+# Módulo descontinuado
 
 
 from typing import TYPE_CHECKING

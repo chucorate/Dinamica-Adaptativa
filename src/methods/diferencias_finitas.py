@@ -20,6 +20,7 @@ from src.tools.model_components import (
     compute_resource_integral,
     compute_stationary_resource,
 )
+from src.constants import MIN_DENSITY
 
 if TYPE_CHECKING:
     from src.model import Model
@@ -74,9 +75,9 @@ def build_theta_scheme(
     # Multiplicamos por la tasa de mutación
     L = model.mutation_rate * build_laplacian(model.consumer_grid, border_type)
 
-    I_sparse = eye(model.consumer_size, format="csc", dtype=dtype)
+    I_sparse = cast(csc_matrix, eye(model.consumer_size, format="csc", dtype=dtype))
 
-    B_theta = I_sparse - (1.0 - theta) * delta_t * L
+    B_theta = cast(csc_matrix, I_sparse - (1.0 - theta) * delta_t * L)
 
     return ThetaScheme(
         theta=theta,
@@ -156,7 +157,7 @@ def build_laplacian(
 
             term = kron(term, factor, format="csc")
 
-        L_total += term
+        L_total += term  # type: ignore[arg-type]
 
     return cast(csc_matrix, L_total)
 
@@ -278,6 +279,9 @@ def solve_model_by_finite_differences(
                 prev_resource, consumer_dist[k, :], dt, weights_x, coeffs
             )
         )
+
+        consumer_dist[k, consumer_dist[k] < MIN_DENSITY] = 0.0
+        resource_dist[k, resource_dist[k] < MIN_DENSITY] = 0.0
 
     # Obtenemos cantidad de consumidores final
     consumer_quantity = consumer_dist @ weights_x
