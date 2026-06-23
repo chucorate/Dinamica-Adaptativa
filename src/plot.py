@@ -79,7 +79,7 @@ class Plot:
                 artist = ax.contourf(X, T, Z, **kwargs)
 
             ax.set_xlabel(xlabel)
-            ax.set_ylabel("Time")
+            ax.set_ylabel("Tiempo")
 
             fig.colorbar(artist, ax=ax)
             ax.set_title(title)

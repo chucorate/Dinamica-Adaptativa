@@ -15,4 +15,4 @@ MIN_DENOMINATOR = 1e-12
 
 # Valor mínimo permitido para las densidades de consumidor y recursos
 # para evitar comportamientos inesperados por floating points (por ejemplo, que la población reviva luego de cierto tiempo)
-MIN_DENSITY = 1e-9
+MIN_DENSITY = 1e-18
