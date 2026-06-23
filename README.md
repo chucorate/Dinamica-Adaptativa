@@ -138,13 +138,13 @@ Para detalles sobre análisis de estabilidad CFL, condiciones de borde, y discre
 
 - [x] Resolver esquema general unidimensional.
 - [x] Crear funciones para plotear las funciones del modelo y la solución.
-- [ ] Estudiar monomorficidad y dimorficidad. ***[en progreso]***
+- [x] Estudiar monomorficidad y dimorficidad.
 - [x] Probar distintos métodos de diferencias finitas (explícito, implícito y semi-implícito).
 - [x] Estudiar CFL.
-- [ ] Probar métodos espectrales. ***[en progreso]***
-- [ ] Simular canibalismo.
+- [ ] Probar métodos espectrales. ***[no realizado]***
+- [ ] Simular canibalismo. ***[no realizado]***
 - [x] Replicar los resultados del paper en el caso gaussiano.
 - [x] Resolver esquema general bidimensional.
-- [ ] Ver qué pasa al cambiar condiciones en tiempos arbitrarios. (propuesto)
-- [ ] Estudiar polimorficidad. (propuesto)
+- [ ] Ver qué pasa al cambiar condiciones en tiempos arbitrarios. ***[no realizado]***
+- [x] Estudiar polimorficidad. 
 
